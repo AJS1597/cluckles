@@ -925,3 +925,144 @@ kbd {
   text-decoration: none;
   font-size: 12px;
 }
+
+/* ===================== Bigger chicken stack / perks GUI ===================== */
+
+#overlay-panel {
+  width: min(1120px, 96vw);
+  max-height: 92vh;
+}
+
+.panel {
+  padding: 28px 32px;
+  font-size: 14px;
+}
+
+.panel-head h2 {
+  font-size: 24px;
+  letter-spacing: 0.16em;
+}
+
+.panel-close {
+  font-size: 13px;
+  padding: 7px 14px;
+}
+
+.panel-foot {
+  font-size: 12px;
+  margin-top: 20px;
+}
+
+.muted {
+  font-size: 13px;
+}
+
+.ring-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.ring-card {
+  min-height: 120px;
+  padding: 16px;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.ring-card-dir {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.chip-dot {
+  width: 20px;
+  height: 20px;
+}
+
+.chip-name {
+  font-size: 16px;
+}
+
+.chip-tag {
+  font-size: 11px;
+}
+
+.chip-empty {
+  font-size: 14px;
+}
+
+.inv-row {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.inv-card {
+  padding: 13px 14px;
+  font-size: 14px;
+}
+
+.detail h3 {
+  font-size: 18px;
+}
+
+.detail p {
+  font-size: 14px;
+}
+
+.perk-grid {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.perk-card {
+  padding: 16px;
+}
+
+.perk-card h4 {
+  font-size: 15px;
+}
+
+.perk-card p {
+  font-size: 13px;
+}
+
+/* The always-on stack panel in the corner */
+.stack-panel {
+  width: 268px;
+}
+
+.stack-head {
+  font-size: 11px;
+}
+
+.stack-ring {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ring-slot {
+  gap: 8px;
+  padding: 7px 9px;
+  font-size: 12px;
+}
+
+.ring-slot .ring-dot {
+  width: 15px;
+  height: 15px;
+}
+
+.stack-hint {
+  font-size: 11px;
+}
+
+.perk-strip {
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.perk-chip {
+  font-size: 10px;
+  padding: 3px 8px;
+}
