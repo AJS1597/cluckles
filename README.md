@@ -1,3 +1,14 @@
+﻿We tried to make a top down rougelike like the Binding of Issac, but with chickens. These chickens had different projectiles and could be swapped around to change play style.
+
+We had the chicken stacking system, stack GUI and swapping it, perks, clearing rooms, feed, shops, enemies, but did not get to having multiple floors. 
+
+The agent did not have much trouble understanding, it got pretty much all basic features in one shot only making water walkable which was a quick fix. It also obviously messed up on the GUI, as that is not visible to it as it is not using computer vision in any way.
+
+Yes.  The first prompt was very large, causing it to take a good while to finish (~40 mins). However, the game came out in a nice state that was decently playable. Overall, It may not have been efficient, but it worked.
+
+The agent did not do anything too complex, most of it was able to be explained as it was basic typescript and JSON files which can be interpreted semi-easily. 
+
+
 # Cluckles
 
 A top-down roguelike shooter where your weapon is a stack of chickens. Each
