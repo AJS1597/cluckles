@@ -835,13 +835,23 @@ export class GameScene extends Scene {
   }
 
   private onSelectSlot(slot: number): void {
-    if (this.stackSelection?.kind === 'inventory') {
-      const id = this.run.owned[this.stackSelection.index] ?? null;
+    const selection = this.stackSelection;
+    if (selection?.kind === 'slot') {
+      if (selection.slot === slot) {
+        // Click the same slot again to deselect.
+        this.stackSelection = null;
+      } else {
+        // Two different slots: swap the chickens between them.
+        this.run.swapSlots(selection.slot, slot);
+        this.stackSelection = null;
+        this.sfx.pickup();
+        this.hud.toast('Chickens swapped');
+      }
+    } else if (selection?.kind === 'inventory') {
+      const id = this.run.owned[selection.index] ?? null;
       if (id) {
         this.run.setSlot(slot, id);
-        this.stackSelection = null;
       }
-    } else if (this.stackSelection?.kind === 'slot' && this.stackSelection.slot === slot) {
       this.stackSelection = null;
     } else {
       this.stackSelection = { kind: 'slot', slot };
