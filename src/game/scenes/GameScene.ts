@@ -23,14 +23,15 @@ import {
 import { loadCustomRooms } from '../level/customRooms';
 import { loadBuiltinRooms } from '../level/rooms';
 import {
-  charAt,
   doorCenterTile,
+  doorEntryTile,
+  findWalkableNear,
   roomPedestals,
   roomSpawn,
   type DoorSide,
   type EggRoom,
 } from '../level/roomFormat';
-import { charIsSolid, type PedestalKind } from '../level/tiles';
+import type { PedestalKind } from '../level/tiles';
 import { rollPerk } from '../perks/perks';
 import {
   spawnEnemyShot,
@@ -221,22 +222,14 @@ export class GameScene extends Scene {
     this.camera.zoom = zoom;
     this.camera.pos = vec(w / 2, h / 2);
 
-    // Player placement: through the door they entered, or the room spawn.
+    // Player placement. Door entry snaps to the nearest walkable tile so you
+    // can never be dropped inside rock, wall or water.
     const spawn = roomSpawn(node.room);
-    let tileX = spawn.x;
-    let tileY = spawn.y;
-    if (enterSide) {
-      const door = doorCenterTile(node.room, enterSide);
-      tileX = door.x;
-      tileY = door.y;
-      // Step one tile inward so we are clear of the doorway trigger.
-      if (enterSide === 'left') tileX += 2;
-      if (enterSide === 'right') tileX -= 2;
-      if (enterSide === 'up') tileY += 2;
-      if (enterSide === 'down') tileY -= 2;
-    }
-    this.player.x = (tileX + 0.5) * TILE;
-    this.player.y = (tileY + 0.5) * TILE;
+    const tile = enterSide
+      ? doorEntryTile(node.room, enterSide)
+      : findWalkableNear(node.room, spawn.x, spawn.y);
+    this.player.x = (tile.x + 0.5) * TILE;
+    this.player.y = (tile.y + 0.5) * TILE;
     this.player.vx = 0;
     this.player.vy = 0;
     this.player.invuln = first ? 1.0 : 0.7;
@@ -343,24 +336,7 @@ export class GameScene extends Scene {
   }
 
   private findOpenTile(room: EggRoom, tx: number, ty: number): { x: number; y: number } {
-    const cx = clamp(tx, 1, room.width - 2);
-    const cy = clamp(ty, 1, room.height - 2);
-    if (!charIsSolid(charAt(room, cx, cy))) {
-      return { x: cx, y: cy };
-    }
-    for (let radius = 1; radius < Math.max(room.width, room.height); radius++) {
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          const x = cx + dx;
-          const y = cy + dy;
-          if (x < 1 || y < 1 || x >= room.width - 1 || y >= room.height - 1) continue;
-          if (!charIsSolid(charAt(room, x, y))) {
-            return { x, y };
-          }
-        }
-      }
-    }
-    return { x: cx, y: cy };
+    return findWalkableNear(room, tx, ty);
   }
 
   // ----------------------------------------------------------------- combat

@@ -55,7 +55,7 @@ Rooms are JSON files with the `.egg` extension (`src/game/level/rooms/*.egg`).
 A room is a grid of single characters plus a little metadata:
 
 ```
-#  wall      .  floor     ~  water (slow)     o  rock      =  fence
+#  wall      .  floor     ~  water (impassable)     o  rock      =  fence
 p  spawn     +  door
 C F D R B S X W M O   enemies (cat, fox, dog, rat, bat, snake, spider, crow, slime, rooster)
 c f k s h              pedestals (chicken, feed, perk, shop, heart)
@@ -114,4 +114,4 @@ tests/                        headless tests for the core mechanics
 room pool, floor generation (connectivity + symmetric 1–4 doors), the chicken
 stack slot mapping, projectile behaviour (spread, lifetime, wall bounce), enemy
 AI (chasing, ranged telegraph/fire, staying in bounds), perk modifiers and
-player movement (acceleration, wall sliding, water slowdown).
+player movement (acceleration, wall sliding, impassable water).

@@ -367,3 +367,49 @@ export function doorCenterTile(room: EggRoom, side: DoorSide): { x: number; y: n
   if (side === 'left') return { x: 0, y: Math.floor(room.height / 2) };
   return { x: room.width - 1, y: Math.floor(room.height / 2) };
 }
+
+function clampTile(value: number, min: number, max: number): number {
+  return value < min ? min : value > max ? max : value;
+}
+
+/**
+ * Nearest walkable tile to (tx, ty). Used to place the player and pedestals so
+ * they can never end up inside rock, wall, fence or water.
+ */
+export function findWalkableNear(room: EggRoom, tx: number, ty: number): { x: number; y: number } {
+  const cx = clampTile(tx, 1, Math.max(1, room.width - 2));
+  const cy = clampTile(ty, 1, Math.max(1, room.height - 2));
+  if (!charIsSolid(charAt(room, cx, cy))) {
+    return { x: cx, y: cy };
+  }
+  const maxRadius = Math.max(room.width, room.height);
+  for (let radius = 1; radius <= maxRadius; radius++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const x = cx + dx;
+        const y = cy + dy;
+        if (x < 1 || y < 1 || x >= room.width - 1 || y >= room.height - 1) continue;
+        if (!charIsSolid(charAt(room, x, y))) {
+          return { x, y };
+        }
+      }
+    }
+  }
+  return { x: cx, y: cy };
+}
+
+/**
+ * Where the player appears when they walk in through `side`. Steps inward from
+ * the door and then snaps to the nearest walkable tile, so a door can never
+ * spit you out inside a rock (e.g. the diamond room's centre columns).
+ */
+export function doorEntryTile(room: EggRoom, side: DoorSide, inset = 2): { x: number; y: number } {
+  const door = doorCenterTile(room, side);
+  let x = door.x;
+  let y = door.y;
+  if (side === 'left') x += inset;
+  else if (side === 'right') x -= inset;
+  else if (side === 'up') y += inset;
+  else y -= inset;
+  return findWalkableNear(room, x, y);
+}
