@@ -69,8 +69,7 @@ export function stepPlayer(
   const tileX = Math.floor(p.x / TILE);
   const tileY = Math.floor(p.y / TILE);
   p.inWater = isWaterAt(room, tileX, tileY);
-  const waterMul = p.inWater ? 0.62 : 1;
-  const speed = PLAYER.speed * speedMul * waterMul;
+  const speed = PLAYER.speed * speedMul;
 
   const targetVx = ix * speed;
   const targetVy = iy * speed;

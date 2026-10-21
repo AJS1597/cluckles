@@ -4,7 +4,7 @@
  * Terrain characters describe collision and floor art. Entity characters sit on
  * top of floor, so a room never needs more than one grid.
  *
- *   #  wall (solid)      .  floor          ~  water (slow)
+ *   #  wall (solid)      .  floor          ~  water (impassable)
  *   o  rock (solid)      =  fence (solid)  +  door (walkable)
  *   p  player spawn
  *   C F D R B S X W M O  enemies (cat, fox, dog, rat, bat, snake, spider, crow, slime, rooster)
@@ -49,7 +49,13 @@ export const PEDESTAL_CHARS = {
 export type PedestalKind = keyof typeof PEDESTAL_CHARS;
 
 export function charIsSolid(char: string): boolean {
-  return char === TERRAIN.wall || char === TERRAIN.rock || char === TERRAIN.fence;
+  // Water is a solid obstacle: you cannot walk on it.
+  return (
+    char === TERRAIN.wall ||
+    char === TERRAIN.rock ||
+    char === TERRAIN.fence ||
+    char === TERRAIN.water
+  );
 }
 
 export function charIsWater(char: string): boolean {

@@ -32,16 +32,13 @@ describe('player movement', () => {
     expect(player.y).toBeGreaterThan(0);
   });
 
-  it('moves slower in water', () => {
+  it('cannot walk onto water', () => {
     const room = makeBlankRoom(19, 11);
     for (let x = 2; x < 17; x++) setChar(room, x, 5, TERRAIN.water);
-    const wet = makePlayer(3 * 32 + 16, 5 * 32 + 16);
-    const dry = makePlayer(3 * 32 + 16, 3 * 32 + 16);
-    for (let i = 0; i < 30; i++) {
-      stepPlayer(wet, move(1, 0), room, 1 / 60, 1);
-      stepPlayer(dry, move(1, 0), room, 1 / 60, 1);
-    }
-    expect(wet.inWater).toBe(true);
-    expect(wet.vx).toBeLessThan(dry.vx);
+    const player = makePlayer(1 * 32 + 16, 5 * 32 + 16);
+    for (let i = 0; i < 180; i++) stepPlayer(player, move(1, 0), room, 1 / 60, 1);
+    // Water starts at tile column 2 (world x = 64); the player is stopped at its edge.
+    expect(player.x + player.r).toBeLessThanOrEqual(64.5);
+    expect(player.inWater).toBe(false);
   });
 });
