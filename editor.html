@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cluckles — .egg Room Editor</title>
+    <style>
+      :root { --ink:#f4efe6; --dim:#b7ab9c; --accent:#ffcf5c; --edge:rgba(255,235,190,.18); }
+      * { box-sizing: border-box; }
+      body { margin:0; min-height:100vh; background:radial-gradient(circle at 50% 20%,#1b1424,#0a0810 70%); color:var(--ink); font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif; }
+      header.ed { display:flex; align-items:center; gap:16px; padding:12px 18px; border-bottom:1px solid var(--edge); flex-wrap:wrap; }
+      header.ed h1 { margin:0; font-size:16px; letter-spacing:.18em; color:var(--accent); }
+      header.ed a { color:var(--dim); font-size:12px; text-decoration:none; border:1px solid var(--edge); padding:5px 10px; border-radius:8px; }
+      header.ed .spacer { flex:1; }
+      .wrap { display:grid; grid-template-columns: 1fr 260px; gap:16px; padding:16px; align-items:start; }
+      .board { overflow:auto; border:1px solid var(--edge); border-radius:12px; background:#0d0a12; padding:8px; }
+      canvas#board { display:block; image-rendering: pixelated; cursor:crosshair; }
+      .side { display:flex; flex-direction:column; gap:12px; }
+      .card { border:1px solid var(--edge); border-radius:12px; padding:12px; background:rgba(255,255,255,.03); }
+      .card h2 { margin:0 0 8px; font-size:11px; letter-spacing:.14em; color:var(--dim); }
+      label { display:block; font-size:10px; color:var(--dim); margin:6px 0 2px; }
+      input[type=text], select { width:100%; padding:6px 8px; border-radius:8px; border:1px solid var(--edge); background:#140f1c; color:var(--ink); font-family:inherit; font-size:12px; }
+      .palette { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+      .palette button { display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; border-radius:8px; border:1px solid var(--edge); background:rgba(255,255,255,.04); color:var(--ink); cursor:pointer; font-size:9px; }
+      .palette button.sel { border-color:var(--accent); background:rgba(255,207,92,.14); }
+      .palette .sw { width:16px; height:16px; border-radius:4px; display:block; }
+      .doors { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+      .doors button { padding:7px; border-radius:8px; border:1px solid var(--edge); background:rgba(255,255,255,.04); color:var(--ink); cursor:pointer; font-size:11px; }
+      .doors button.on { border-color:var(--accent); background:rgba(255,207,92,.14); }
+      .row { display:flex; gap:6px; flex-wrap:wrap; }
+      .row button, .row a.btn { flex:1; padding:8px; border-radius:8px; border:1px solid var(--edge); background:rgba(255,255,255,.06); color:var(--ink); cursor:pointer; font-size:11px; text-align:center; text-decoration:none; }
+      .primary { background:linear-gradient(180deg,var(--accent),#ff8a3d)!important; color:#2a1806!important; border:none!important; font-weight:700; }
+      #status { font-size:11px; color:var(--dim); min-height:16px; padding:0 18px 18px; }
+      .hint { font-size:10px; color:var(--dim); line-height:1.5; }
+    </style>
+  </head>
+  <body>
+    <header class="ed">
+      <h1>EGG ROOM EDITOR</h1>
+      <span class="hint">paint tiles · click border middles or use the door buttons · save as .egg</span>
+      <span class="spacer"></span>
+      <a href="./index.html">◀ back to game</a>
+    </header>
+
+    <div class="wrap">
+      <div class="board"><canvas id="board"></canvas></div>
+
+      <div class="side">
+        <div class="card">
+          <h2>ROOM</h2>
+          <label for="name">name</label>
+          <input id="name" type="text" value="New Room" />
+          <label for="rid">id (file name)</label>
+          <input id="rid" type="text" value="custom-room" />
+          <label for="role">role</label>
+          <select id="role">
+            <option value="start">start</option>
+            <option value="combat" selected>combat</option>
+            <option value="treasure">treasure</option>
+            <option value="shop">shop</option>
+            <option value="boss">boss</option>
+            <option value="exit">exit</option>
+          </select>
+        </div>
+
+        <div class="card">
+          <h2>TILES</h2>
+          <div id="palette" class="palette"></div>
+          <p class="hint">Right-click to erase to floor.</p>
+        </div>
+
+        <div class="card">
+          <h2>DOORS (middle of each side)</h2>
+          <div id="doors" class="doors"></div>
+        </div>
+
+        <div class="card">
+          <h2>FILE</h2>
+          <div class="row">
+            <button id="new" type="button">New</button>
+            <button id="save" class="primary" type="button">Save .egg</button>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <button id="download" type="button">Download</button>
+            <label class="btn" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--edge);background:rgba(255,255,255,.06);cursor:pointer;text-align:center;font-size:11px;margin:0">
+              Load file<input id="file" type="file" accept=".egg,.json" hidden />
+            </label>
+          </div>
+          <label for="load">load a room</label>
+          <select id="load"><option value="">— pick a room —</option></select>
+        </div>
+      </div>
+    </div>
+    <div id="status"></div>
+    <script type="module" src="/src/editor/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#120f16" />
+    <title>Cluckles — a chicken-stack roguelike</title>
+  </head>
+  <body>
+    <main id="shell">
+      <canvas id="game" aria-label="Cluckles game canvas"></canvas>
+      <div id="flash" aria-hidden="true"></div>
+
+      <div id="hud">
+        <header class="brand">
+          <h1>CLUCKLES</h1>
+          <p id="room-name">The Coop</p>
+        </header>
+
+        <section class="stat-panel" aria-label="Run status">
+          <div class="stat-row">
+            <span class="stat-label">HEARTS</span>
+            <span id="hearts" class="hearts"></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">FEED</span>
+            <span id="feed-value" class="feed-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">DEPTH</span>
+            <span id="depth-value" class="depth-value">1</span>
+          </div>
+        </section>
+
+        <section class="stack-panel" aria-label="Equipped chicken stack">
+          <div class="stack-head"><span>CHICKEN STACK</span></div>
+          <div id="stack-ring" class="stack-ring"></div>
+          <div class="stack-hint">arrows shoot the chicken facing that way</div>
+          <div id="perk-strip" class="perk-strip"></div>
+        </section>
+
+        <div id="toast" class="toast" role="status"></div>
+        <div id="shop-prompt" class="shop-prompt" role="status" hidden></div>
+
+        <aside class="controls" aria-label="Controls">
+          <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</div>
+          <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> shoot that chicken</div>
+          <div><kbd>E</kbd> chicken stack <kbd>P</kbd> perks</div>
+          <div><kbd>SPACE</kbd> interact <kbd>R</kbd> new run</div>
+          <div><kbd>F1</kbd> debug</div>
+        </aside>
+
+        <aside id="debug" class="debug" hidden>
+          <div class="debug-title">DEBUG <span>F1</span></div>
+          <pre id="debug-body"></pre>
+        </aside>
+      </div>
+
+      <!-- GUI overlay (chicken stack + perks are rendered into #overlay-panel) -->
+      <div id="overlay" class="overlay" hidden>
+        <div id="overlay-panel"></div>
+      </div>
+
+      <!-- Death / victory -->
+      <div id="endscreen" class="overlay end" hidden>
+        <div class="overlay-card">
+          <h2 id="end-title">YOU DIED</h2>
+          <p id="end-text"></p>
+          <button id="end-button" class="big-button" type="button">START A NEW RUN <kbd>R</kbd></button>
+          <a class="ghost-button" href="./editor.html">OPEN ROOM EDITOR</a>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
