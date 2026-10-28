@@ -372,12 +372,16 @@ export class GameScene extends Scene {
   }
 
   private updateEnemies(dt: number): void {
+    // Summoned minions are queued and added after the loop, so the AI never
+    // mutates the list it is being iterated over.
+    const pendingMinions: { type: string; x: number; y: number }[] = [];
     const ctx: EnemyContext = {
       playerX: this.player.x,
       playerY: this.player.y,
       playerAlive: !this.run.isDead,
       room: this.room,
       rng: this.rng,
+      spawnMinion: (type, x, y) => pendingMinions.push({ type, x, y }),
     };
 
     for (const enemy of this.enemies) {
@@ -385,7 +389,7 @@ export class GameScene extends Scene {
 
       for (const shot of shots) {
         this.projectiles.push(
-          spawnEnemyShot(shot.x, shot.y, shot.vx, shot.vy, shot.damage, shot.radius, shot.color),
+          spawnEnemyShot(shot.x, shot.y, shot.vx, shot.vy, shot.damage, shot.radius, shot.color, shot.homing ?? 0),
         );
       }
 
@@ -404,6 +408,12 @@ export class GameScene extends Scene {
           this.player.vy += (this.player.y - enemy.y) * push * 260;
         }
       }
+    }
+
+    for (const minion of pendingMinions) {
+      const spawned = makeEnemy(minion.type, minion.x, minion.y, this.run.depth, this.enemyIdCounter++);
+      this.particles.ring(spawned.x, spawned.y, spawned.def.accent, 10, 140);
+      this.enemies.push(spawned);
     }
 
     const survivors = this.enemies.filter((enemy) => !(enemy.dead && enemy.deathTime > ENEMY.deathTime));
@@ -463,7 +473,12 @@ export class GameScene extends Scene {
     for (const p of this.projectiles) {
       if (p.dead) continue;
 
-      const target = p.homing > 0 ? this.nearestEnemy(p.x, p.y) : null;
+      const target =
+        p.homing <= 0
+          ? null
+          : p.owner === 'player'
+            ? this.nearestEnemy(p.x, p.y)
+            : { x: this.player.x, y: this.player.y };
       stepProjectile(p, dt, {
         room: this.room,
         homingTarget: target ? { x: target.x, y: target.y } : null,

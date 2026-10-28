@@ -1,5 +1,6 @@
-import { ENEMY, TILE } from '../config';
-import type { EggRoom } from '../level/roomFormat';
+import { BOSS, ENEMY, TILE } from '../config';
+import { charAt, type EggRoom } from '../level/roomFormat';
+import { charIsSolid } from '../level/tiles';
 import { randRange, randInt, type Rng } from '../util/math';
 import { moveAabb } from '../physics/tilemove';
 
@@ -267,9 +268,11 @@ export interface EnemyShotEvent {
   damage: number;
   radius: number;
   color: string;
+  /** Turn rate (radians/sec) for enemy projectiles that home on the player. */
+  homing?: number;
 }
 
-export type EnemyMode = 'move' | 'telegraph' | 'dash';
+export type EnemyMode = 'move' | 'telegraph' | 'dash' | 'special';
 
 export interface Enemy {
   id: number;
@@ -298,6 +301,17 @@ export interface Enemy {
   bob: number;
   shootTimer: number;
   lungeTimer: number;
+  /**
+   * Boss secondary attack state. `specialTimer` counts down to the next
+   * special while moving; during one, `specialPhase` is 0 (windup) or 1
+   * (active) and `specialStep` counts sub-steps (dashes, strikes, emissions).
+   * `specialX`/`specialY` cache a locked target or return point.
+   */
+  specialTimer: number;
+  specialPhase: number;
+  specialStep: number;
+  specialX: number;
+  specialY: number;
   /** Rotation for spiral boss volleys. */
   phase: number;
   knockX: number;
@@ -313,6 +327,12 @@ export interface EnemyContext {
   playerAlive: boolean;
   room: EggRoom;
   rng: Rng;
+  /**
+   * Optional hook used by summon-style boss specials. Coordinates are tiles;
+   * the caller decides how to add the enemy (so the AI never mutates the list
+   * it is being iterated over).
+   */
+  spawnMinion?: (type: string, tileX: number, tileY: number) => void;
 }
 
 export function makeEnemy(
@@ -354,6 +374,13 @@ export function makeEnemy(
     bob: Math.random() * Math.PI * 2,
     shootTimer: Math.random() * definition.shootCooldown,
     lungeTimer: definition.lungeCooldown * (0.5 + Math.random() * 0.5),
+    specialTimer: definition.boss
+      ? bossSpecial(definition.id).cooldown * (0.6 + Math.random() * 0.4) * BOSS.specialCooldownMul
+      : 0,
+    specialPhase: 0,
+    specialStep: 0,
+    specialX: 0,
+    specialY: 0,
     phase: 0,
     knockX: 0,
     knockY: 0,
@@ -585,11 +612,22 @@ function behaviorMotion(
     }
 
     case 'boss': {
-      e.shootTimer -= dt;
       if (e.mode === 'move') {
+        e.shootTimer -= dt;
+        e.specialTimer -= dt;
         const aim = aimAt(e.x, e.y, ctx.playerX, ctx.playerY);
         e.facingX = aim.x;
         e.facingY = aim.y;
+        // The secondary attack takes priority when its timer elapses.
+        if (e.specialTimer <= 0 && ctx.playerAlive) {
+          e.mode = 'special';
+          e.specialPhase = 0;
+          e.specialStep = 0;
+          e.specialX = ctx.playerX;
+          e.specialY = ctx.playerY;
+          e.timer = bossSpecial(e.def.id).windup;
+          return { x: 0, y: 0 };
+        }
         if (e.shootTimer <= 0 && ctx.playerAlive) {
           e.mode = 'telegraph';
           // Longer windup than regular enemies, so every attack is readable.
@@ -610,6 +648,9 @@ function behaviorMotion(
           e.shootTimer = e.def.shootCooldown;
         }
         return { x: 0, y: 0 };
+      }
+      if (e.mode === 'special') {
+        return bossSpecialStep(e, ctx, dt, shots);
       }
       return { x: 0, y: 0 };
     }
@@ -716,6 +757,71 @@ export function bossPattern(id: string): BossPattern {
   return BOSS_PATTERN[id] ?? 'aimed';
 }
 
+/**
+ * Every boss has one secondary attack, keyed by boss id. They are built from a
+ * small set of archetypes so the code stays tidy, but each boss uses exactly
+ * one archetype with its own tuning, so the special always feels like *that*
+ * boss. All of them telegraph first and leave a dodge window.
+ */
+export type BossSpecialKind =
+  | 'burst'
+  | 'ring'
+  | 'charge'
+  | 'summon'
+  | 'slam'
+  | 'strike'
+  | 'sweep'
+  | 'pounce'
+  | 'homing'
+  | 'roll';
+
+export interface BossSpecialDef {
+  kind: BossSpecialKind;
+  /** Seconds between specials. */
+  cooldown: number;
+  /** Telegraph duration before the special actually happens. */
+  windup: number;
+  /** Active/channel duration (charge dash time, sweep/roll length). */
+  duration: number;
+  /** Projectile count (fan/ring/volley/strikes). */
+  count: number;
+  /** Angular spread in radians (fans) or full turn (rings). */
+  spread: number;
+  /** Projectile speed override. */
+  speed: number;
+  /** Repeated steps: dashes for charge, bolts for strike. */
+  steps: number;
+  /** Minion type spawned by a summon special. */
+  minion?: string;
+}
+
+const BOSS_SPECIAL: Record<string, BossSpecialDef> = {
+  // Wide lobbed fan of eggs.
+  rooster: { kind: 'burst', cooldown: 8, windup: 0.7, duration: 0.25, count: 7, spread: 1.7, speed: 230, steps: 1 },
+  // Radial ring of bones from the roost.
+  vulture: { kind: 'ring', cooldown: 8.5, windup: 0.8, duration: 0.25, count: 12, spread: Math.PI * 2, speed: 205, steps: 1 },
+  // Three rapid kicks across the lanes.
+  cassowary: { kind: 'charge', cooldown: 7, windup: 0.6, duration: 0.24, count: 0, spread: 0, speed: 640, steps: 3 },
+  // Calls the pack.
+  wolf: { kind: 'summon', cooldown: 12, windup: 0.9, duration: 0.25, count: 3, spread: 0, speed: 0, steps: 1, minion: 'rat' },
+  // Heavy ground slam: a big, slow shockwave ring.
+  bear: { kind: 'slam', cooldown: 9, windup: 1.0, duration: 0.3, count: 14, spread: Math.PI * 2, speed: 165, steps: 1 },
+  // Pinpoint lightning barrage.
+  hawk: { kind: 'strike', cooldown: 7, windup: 0.9, duration: 0.25, count: 0, spread: 0, speed: 560, steps: 3 },
+  // Sweeping tail arc.
+  croc: { kind: 'sweep', cooldown: 8, windup: 0.7, duration: 1.0, count: 10, spread: Math.PI * 0.85, speed: 270, steps: 1 },
+  // Dash out and back.
+  lion: { kind: 'pounce', cooldown: 7.5, windup: 0.55, duration: 0.2, count: 0, spread: 0, speed: 700, steps: 1 },
+  // A volley of blood that curves after you.
+  shark: { kind: 'homing', cooldown: 8, windup: 0.8, duration: 0.3, count: 5, spread: 0.9, speed: 235, steps: 1 },
+  // Spinning death roll: a fast double spiral.
+  tyrant: { kind: 'roll', cooldown: 9, windup: 0.9, duration: 1.4, count: 18, spread: Math.PI * 2, speed: 225, steps: 1 },
+};
+
+export function bossSpecial(id: string): BossSpecialDef {
+  return BOSS_SPECIAL[id] ?? BOSS_SPECIAL['rooster']!;
+}
+
 function fireBoss(
   e: Enemy,
   shots: EnemyShotEvent[],
@@ -793,6 +899,241 @@ function fireAimed(
       color: e.def.accent,
     });
   }
+}
+
+// ------------------------------------------------------- boss secondary attacks
+
+/** Push an enemy shot fired from the boss body at an arbitrary angle. */
+function specialPush(
+  e: Enemy,
+  shots: EnemyShotEvent[],
+  angle: number,
+  speed: number,
+  homing = 0,
+): void {
+  shots.push({
+    x: e.x + Math.cos(angle) * (e.r + 2),
+    y: e.y + Math.sin(angle) * (e.r + 2),
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    damage: e.def.shootDamage,
+    radius: e.def.shootRadius,
+    color: e.def.accent,
+    homing,
+  });
+}
+
+/** How long the active phase of a special lasts. */
+function specialActiveTime(def: BossSpecialDef): number {
+  switch (def.kind) {
+    case 'charge':
+      return def.steps * (def.duration + 0.22);
+    case 'pounce':
+      return def.duration * 2;
+    case 'sweep':
+    case 'roll':
+      return def.duration;
+    case 'strike':
+      return def.steps * 0.28;
+    default:
+      return BOSS.specialRecovery;
+  }
+}
+
+/** Find open tiles in expanding rings around the boss for a summon. */
+function summonMinions(e: Enemy, ctx: EnemyContext, def: BossSpecialDef): void {
+  if (!ctx.spawnMinion) return;
+  const cx = Math.floor(e.x / TILE);
+  const cy = Math.floor(e.y / TILE);
+  const chosen: { x: number; y: number }[] = [];
+  for (let radius = 2; radius <= 7 && chosen.length < def.count; radius++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+        const x = cx + dx;
+        const y = cy + dy;
+        if (x < 1 || y < 1 || x >= ctx.room.width - 1 || y >= ctx.room.height - 1) continue;
+        if (charIsSolid(charAt(ctx.room, x, y))) continue;
+        if (chosen.some((c) => Math.hypot(c.x - x, c.y - y) < 3)) continue;
+        chosen.push({ x, y });
+        if (chosen.length >= def.count) break;
+      }
+    }
+  }
+  for (const spot of chosen) {
+    ctx.spawnMinion(def.minion ?? 'rat', spot.x, spot.y);
+  }
+}
+
+/** Fire the instantaneous part of a special (channeled kinds are set up here). */
+function beginSpecial(
+  e: Enemy,
+  ctx: EnemyContext,
+  def: BossSpecialDef,
+  aim: { x: number; y: number },
+  shots: EnemyShotEvent[],
+): void {
+  switch (def.kind) {
+    case 'burst': {
+      const base = Math.atan2(aim.y, aim.x);
+      for (let i = 0; i < def.count; i++) {
+        const t = def.count === 1 ? 0 : i / (def.count - 1) - 0.5;
+        specialPush(e, shots, base + t * def.spread, def.speed);
+      }
+      return;
+    }
+    case 'ring': {
+      for (let i = 0; i < def.count; i++) {
+        specialPush(e, shots, (i / def.count) * Math.PI * 2, def.speed);
+      }
+      return;
+    }
+    case 'slam': {
+      // A full ring with one gap aimed away from the player: an escape lane.
+      const base = Math.atan2(aim.y, aim.x);
+      const gap = base + Math.PI;
+      for (let i = 0; i < def.count; i++) {
+        const angle = (i / def.count) * Math.PI * 2;
+        let diff = Math.abs(angle - gap) % (Math.PI * 2);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff < Math.PI / 5) continue;
+        specialPush(e, shots, angle, def.speed);
+      }
+      return;
+    }
+    case 'homing': {
+      const base = Math.atan2(aim.y, aim.x);
+      for (let i = 0; i < def.count; i++) {
+        const t = def.count === 1 ? 0 : i / (def.count - 1) - 0.5;
+        specialPush(e, shots, base + t * def.spread, def.speed, 3.2);
+      }
+      return;
+    }
+    case 'summon': {
+      summonMinions(e, ctx, def);
+      return;
+    }
+    case 'pounce': {
+      // Remember where to return to.
+      e.specialX = e.x;
+      e.specialY = e.y;
+      return;
+    }
+    default:
+      // charge / sweep / roll / strike play out in bossSpecialStep.
+      return;
+  }
+}
+
+/** Advance a boss through its secondary attack. Returns this step's motion. */
+function bossSpecialStep(
+  e: Enemy,
+  ctx: EnemyContext,
+  dt: number,
+  shots: EnemyShotEvent[],
+): { x: number; y: number } {
+  const def = bossSpecial(e.def.id);
+  const aim = aimAt(e.x, e.y, ctx.playerX, ctx.playerY);
+  e.facingX = aim.x;
+  e.facingY = aim.y;
+
+  if (e.specialPhase === 0) {
+    // Windup: keep tracking so aimed specials lock on when it ends.
+    e.specialX = ctx.playerX;
+    e.specialY = ctx.playerY;
+    e.timer -= dt;
+    if (e.timer <= 0) {
+      beginSpecial(e, ctx, def, aim, shots);
+      e.specialPhase = 1;
+      e.specialStep = 0;
+      e.timer = specialActiveTime(def);
+    }
+    return { x: 0, y: 0 };
+  }
+
+  const total = specialActiveTime(def);
+  const elapsed = Math.max(0, total - Math.max(0, e.timer));
+  e.timer -= dt;
+
+  switch (def.kind) {
+    case 'charge': {
+      // Alternate dash / rest phases, always aimed at the player.
+      const phaseLen = total / Math.max(1, def.steps * 2 - 1);
+      const phase = Math.min(def.steps * 2 - 2, Math.floor(elapsed / phaseLen));
+      const dashing = phase % 2 === 0;
+      if (e.timer <= 0) finishSpecial(e, def);
+      return dashing ? { x: aim.x * def.speed, y: aim.y * def.speed } : { x: 0, y: 0 };
+    }
+    case 'pounce': {
+      let motion: { x: number; y: number };
+      if (elapsed < def.duration) {
+        motion = { x: aim.x * def.speed, y: aim.y * def.speed };
+      } else {
+        const back = aimAt(e.x, e.y, e.specialX, e.specialY);
+        motion = { x: back.x * def.speed, y: back.y * def.speed };
+      }
+      if (e.timer <= 0) finishSpecial(e, def);
+      return motion;
+    }
+    case 'sweep': {
+      const base = Math.atan2(aim.y, aim.x);
+      const target = Math.floor((elapsed / def.duration) * def.count);
+      while (e.specialStep < target) {
+        const t = def.count === 1 ? 0 : e.specialStep / (def.count - 1) - 0.5;
+        specialPush(e, shots, base + t * def.spread, def.speed);
+        e.specialStep += 1;
+      }
+      if (e.timer <= 0) finishSpecial(e, def);
+      return { x: 0, y: 0 };
+    }
+    case 'roll': {
+      // A double spiral: two opposite arms spinning around the boss.
+      const target = Math.floor((elapsed / def.duration) * def.count);
+      const step = (Math.PI * 2 * 3) / Math.max(1, def.count);
+      while (e.specialStep < target) {
+        const angle = e.phase + e.specialStep * step;
+        specialPush(e, shots, angle, def.speed);
+        specialPush(e, shots, angle + Math.PI, def.speed);
+        e.specialStep += 1;
+      }
+      if (e.timer <= 0) finishSpecial(e, def);
+      return { x: 0, y: 0 };
+    }
+    case 'strike': {
+      const interval = 0.28;
+      const target = Math.floor(elapsed / interval);
+      while (e.specialStep < target && e.specialStep < def.steps) {
+        const tx = ctx.playerX;
+        const ty = ctx.playerY;
+        e.specialX = tx;
+        e.specialY = ty;
+        // A bolt falls from above onto the marked spot. Clamp the spawn so a
+        // strike near the top wall does not start outside the room.
+        shots.push({
+          x: tx,
+          y: Math.max(TILE * 1.5, ty - 130),
+          vx: 0,
+          vy: def.speed,
+          damage: e.def.shootDamage,
+          radius: e.def.shootRadius,
+          color: e.def.accent,
+        });
+        e.specialStep += 1;
+      }
+      if (e.timer <= 0) finishSpecial(e, def);
+      return { x: 0, y: 0 };
+    }
+    default:
+      if (e.timer <= 0) finishSpecial(e, def);
+      return { x: 0, y: 0 };
+  }
+}
+
+function finishSpecial(e: Enemy, def: BossSpecialDef): void {
+  e.mode = 'move';
+  e.specialPhase = 0;
+  e.specialStep = 0;
+  e.specialTimer = def.cooldown * BOSS.specialCooldownMul;
 }
 
 export function enemyRect(e: Enemy): { x: number; y: number; w: number; h: number } {

@@ -116,6 +116,29 @@ function pickTemplate(
   return chosen;
 }
 
+/**
+ * Boss arenas are authored per boss and tagged with that boss's id, so the
+ * floor's boss always fights in its own room. Pools without matching tags (e.g.
+ * editor rooms) fall back to the generic random boss pick.
+ */
+function pickBossTemplate(
+  pool: readonly EggRoom[],
+  depth: number,
+  used: Set<string>,
+  rng: Rng,
+): EggRoom {
+  const bossId = bossForFloor(depth);
+  const tagged = pool.filter((room) => room.role === 'boss' && (room.tags ?? []).includes(bossId));
+  if (tagged.length > 0) {
+    const fresh = tagged.filter((room) => !used.has(room.id));
+    const list = fresh.length > 0 ? fresh : tagged;
+    const chosen = list[randInt(rng, 0, list.length)] ?? tagged[0]!;
+    used.add(chosen.id);
+    return chosen;
+  }
+  return pickTemplate(pool, 'boss', used, rng);
+}
+
 /** Punch door gaps into a room copy and record which sides are open. */
 export function applyDoors(room: EggRoom, doors: readonly DoorSide[]): EggRoom {
   const copy = cloneRoom(room);
@@ -228,7 +251,9 @@ function generateSpawns(node: DungeonNode, depth: number, rng: Rng): EnemySpec[]
     const boss = findWalkableNear(node.room, Math.floor(node.room.width / 2), Math.floor(node.room.height / 2));
     spawns.push({ type: bossForFloor(depth), x: boss.x, y: boss.y });
     const minionTiles = open.filter((tile) => tile.x !== boss.x || tile.y !== boss.y);
-    const minions = Math.min(2, minionTiles.length);
+    // Larger arenas hold more of a crowd.
+    const desiredMinions = 2 + Math.floor((node.room.width * node.room.height) / 220);
+    const minions = Math.min(desiredMinions, minionTiles.length);
     for (let i = 0; i < minions; i++) {
       const tile = minionTiles[i]!;
       spawns.push({ type: pool[randInt(rng, 0, pool.length)]!, x: tile.x, y: tile.y });
@@ -341,7 +366,10 @@ export function generateDungeon(options: GenerateOptions): Dungeon {
 
   for (const [key, cell] of placed) {
     const role = roles.get(key) ?? 'combat';
-    const template = pickTemplate(options.pool, role, used, rng);
+    const template =
+      role === 'boss'
+        ? pickBossTemplate(options.pool, options.depth, used, rng)
+        : pickTemplate(options.pool, role, used, rng);
     const doors = doorMap.get(key) ?? [];
     const room = applyDoors(template, doors);
 

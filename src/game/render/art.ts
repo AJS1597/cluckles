@@ -1,7 +1,7 @@
 import { CHICKEN_BY_ID } from '../chickens/chickens';
 import type { ChickenDef } from '../chickens/types';
 import { DIRS, dirAngle } from '../dir';
-import type { Enemy } from '../enemies/enemies';
+import { bossSpecial, type Enemy } from '../enemies/enemies';
 import type { Projectile } from '../projectiles/projectiles';
 import type { DoorSide } from '../level/roomFormat';
 import { clamp } from '../util/math';
@@ -640,6 +640,36 @@ export function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number)
     ctx.font = 'bold 18px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('!', 0, -e.r - 16);
+  }
+
+  // Secondary-attack windup: a gold charging ring, plus a strike reticle.
+  if (e.mode === 'special' && e.specialPhase === 0 && !e.dead) {
+    const pulse = 0.5 + Math.sin(time * 12) * 0.5;
+    ctx.save();
+    ctx.globalAlpha = 0.35 + pulse * 0.45;
+    ctx.strokeStyle = '#ffd24a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.r + 6 + pulse * 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    if (bossSpecial(e.def.id).kind === 'strike') {
+      const rx = e.specialX - e.x;
+      const ry = e.specialY - e.y;
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.strokeStyle = '#ffe066';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(rx, ry, 18, 0, Math.PI * 2);
+      ctx.moveTo(rx - 24, ry);
+      ctx.lineTo(rx + 24, ry);
+      ctx.moveTo(rx, ry - 24);
+      ctx.lineTo(rx, ry + 24);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   ctx.restore();
