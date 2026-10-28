@@ -273,6 +273,8 @@ export type EnemyMode = 'move' | 'telegraph' | 'dash';
 
 export interface Enemy {
   id: number;
+  /** Index in the room's spawn list, or -1 for enemies with no room state. */
+  spawnIndex: number;
   def: EnemyDef;
   /** Center position. */
   x: number;
@@ -326,6 +328,7 @@ export function makeEnemy(
   tileY: number,
   depth: number,
   id: number,
+  spawnIndex = -1,
 ): Enemy {
   const definition = ENEMY_DEFS[defId] ?? ENEMY_DEFS['rat']!;
   const hpScale = 1 + (depth - 1) * 0.28;
@@ -335,6 +338,7 @@ export function makeEnemy(
   const y = (tileY + 0.5) * TILE;
   return {
     id,
+    spawnIndex,
     def: { ...definition, speed: definition.speed * speedScale },
     x,
     y,

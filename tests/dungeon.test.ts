@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { OPPOSITE } from '../src/game/dir';
-import { ensureSpawns, generateDungeon, neighborKey } from '../src/game/level/dungeon';
+import {
+  ensureSpawns,
+  generateDungeon,
+  livingSpawns,
+  neighborKey,
+  recordSpawnHealth,
+} from '../src/game/level/dungeon';
 import { bossForFloor } from '../src/game/enemies/enemies';
 import { mulberry32 } from '../src/game/util/math';
 import { loadBuiltinRooms } from '../src/game/level/rooms';
@@ -32,6 +38,41 @@ describe('floor bosses', () => {
     });
     const boss = dungeon.nodes.get(dungeon.bossKey)!;
     expect(ensureSpawns(boss, 4, mulberry32(1))[0]!.type).toBe(bossForFloor(4));
+  });
+});
+
+describe('enemy persistence', () => {
+  it('keeps dead spawns dead and preserves survivor health', () => {
+    const dungeon = build(3, 4);
+    let node = null;
+    let spawns = null;
+    for (const candidate of dungeon.nodes.values()) {
+      const rolled = ensureSpawns(candidate, 4, mulberry32(1));
+      if (rolled.length >= 2) {
+        node = candidate;
+        spawns = rolled;
+        break;
+      }
+    }
+
+    expect(node).toBeTruthy();
+    expect(spawns).toBeTruthy();
+    expect(node!.enemyStates).toHaveLength(spawns!.length);
+    expect(livingSpawns(node!).map((spawn) => spawn.index)).toEqual(
+      spawns!.map((_, index) => index),
+    );
+
+    recordSpawnHealth(node!, 0, 0);
+    recordSpawnHealth(node!, 1, 3);
+
+    const living = livingSpawns(node!);
+    expect(living.some((spawn) => spawn.index === 0)).toBe(false);
+    expect(living.find((spawn) => spawn.index === 1)).toMatchObject({ index: 1, hp: 3 });
+
+    // Re-entering must reuse the same saved state rather than rerolling spawns.
+    const states = node!.enemyStates;
+    expect(ensureSpawns(node!, 4, mulberry32(99))).toBe(spawns);
+    expect(node!.enemyStates).toBe(states);
   });
 });
 

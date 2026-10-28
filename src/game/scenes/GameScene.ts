@@ -15,7 +15,9 @@ import {
   combatReward,
   ensureSpawns,
   generateDungeon,
+  livingSpawns,
   neighborKey,
+  recordSpawnHealth,
   type Dungeon,
   type DungeonNode,
   type RewardPlan,
@@ -205,6 +207,7 @@ export class GameScene extends Scene {
   // ------------------------------------------------------------------ rooms
 
   private enterNode(node: DungeonNode, enterSide: DoorSide | null, first = false): void {
+    this.saveRoomEnemyState();
     const firstVisit = !node.visited;
     this.node = node;
     this.room = node.room;
@@ -255,6 +258,15 @@ export class GameScene extends Scene {
     }
   }
 
+  /** Persist HP/death progress before the current room and its enemies are replaced. */
+  private saveRoomEnemyState(): void {
+    if (!this.node) return;
+    for (const enemy of this.enemies) {
+      if (enemy.spawnIndex < 0) continue;
+      recordSpawnHealth(this.node, enemy.spawnIndex, enemy.dead ? 0 : enemy.hp);
+    }
+  }
+
   private spawnRoomContents(firstVisit: boolean): void {
     const node = this.node;
 
@@ -269,9 +281,19 @@ export class GameScene extends Scene {
 
     // Enemies (authored, or rolled once per floor).
     if (!node.cleared) {
-      const spawns = ensureSpawns(node, this.run.depth, this.rng);
-      for (const spawn of spawns) {
-        const enemy = makeEnemy(spawn.type, spawn.x, spawn.y, this.run.depth, this.enemyIdCounter++);
+      ensureSpawns(node, this.run.depth, this.rng);
+      for (const spawn of livingSpawns(node)) {
+        const enemy = makeEnemy(
+          spawn.spec.type,
+          spawn.spec.x,
+          spawn.spec.y,
+          this.run.depth,
+          this.enemyIdCounter++,
+          spawn.index,
+        );
+        if (spawn.hp >= 0) {
+          enemy.hp = Math.max(1, Math.min(spawn.hp, enemy.maxHp));
+        }
         // Freeze the AI while the room "loads" so the player can react.
         enemy.inertTime = ENEMY.entryInertTime;
         this.enemies.push(enemy);
@@ -427,6 +449,9 @@ export class GameScene extends Scene {
     enemy.dead = true;
     enemy.deathTime = 0;
     enemy.hp = 0;
+    if (enemy.spawnIndex >= 0) {
+      recordSpawnHealth(this.node, enemy.spawnIndex, 0);
+    }
     this.run.addFeed(enemy.feed);
     this.particles.text(enemy.x, enemy.y - enemy.r - 6, `+${Math.round(enemy.feed * this.run.mods.feedMul)}`, '#f6d76c');
     this.particles.burst(enemy.x, enemy.y, enemy.def.color, 16, 240);
