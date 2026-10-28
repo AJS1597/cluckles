@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:single": "bash scripts/build-single.sh",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -71,7 +71,16 @@ function def(partial: Partial<EnemyDef> & Pick<EnemyDef, 'id' | 'name' | 'behavi
   };
 }
 
-export const ENEMY_DEFS: Record<string, EnemyDef> = Object.fromEntries(
+/**
+ * Enemies left as-is because they are already the weakest (lowest HP). Every
+ * other regular enemy gets the global slow-down and attack-spacing nerf below.
+ */
+const UNNERFED_ENEMIES: readonly string[] = ['rat', 'snake'];
+
+/** Global nerf: 10% slower movement and 15% longer gaps between attacks. */
+const NERF = { speedMul: 0.9, cooldownMul: 1.15 } as const;
+
+const BASE_ENEMY_DEFS: Record<string, EnemyDef> = Object.fromEntries(
   [
     def({
       id: 'rat',
@@ -93,9 +102,10 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = Object.fromEntries(
       radius: 14,
       color: '#e0954a',
       accent: '#8c5a1e',
+      damage: 1,
       feed: 2,
-      lungeCooldown: 2.1,
-      lungeSpeed: 470,
+      lungeCooldown: 3.4,
+      lungeSpeed: 380,
     }),
     def({
       id: 'fox',
@@ -200,8 +210,54 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = Object.fromEntries(
       shootSpread: 0.9,
       shootRadius: 11,
     }),
+    // Unique floor bosses. Each one keeps the shared boss behaviour but has its
+    // own stats and volley pattern, so every floor fight feels different.
+    def({ id: 'vulture', name: 'Carrion Vulture', behavior: 'boss', hp: 60, speed: 120, radius: 24, color: '#5a4a3a', accent: '#2a2018', feed: 14, boss: true, shootCooldown: 1.4, shootSpeed: 340, shootDamage: 1, shootCount: 3, shootSpread: 0.5, shootRadius: 10 }),
+    def({ id: 'cassowary', name: 'Dagger Cassowary', behavior: 'boss', hp: 80, speed: 150, radius: 25, color: '#3a3a4a', accent: '#c94f3d', feed: 16, boss: true, shootCooldown: 2.1, shootSpeed: 380, shootDamage: 1, shootCount: 1, shootSpread: 0, shootRadius: 12 }),
+    def({ id: 'wolf', name: 'Dire Wolf', behavior: 'boss', hp: 90, speed: 170, radius: 26, color: '#7a7a86', accent: '#2a2a33', feed: 18, boss: true, shootCooldown: 1.9, shootSpeed: 360, shootDamage: 1, shootCount: 2, shootSpread: 0.3, shootRadius: 10 }),
+    def({ id: 'bear', name: 'Brown Bear', behavior: 'boss', hp: 110, speed: 90, radius: 30, color: '#6a4a2a', accent: '#3a2412', feed: 20, boss: true, shootCooldown: 2.4, shootSpeed: 260, shootDamage: 1, shootCount: 6, shootSpread: 1.6, shootRadius: 13 }),
+    def({ id: 'hawk', name: 'Storm Hawk', behavior: 'boss', hp: 75, speed: 180, radius: 22, color: '#b08050', accent: '#4a2e18', feed: 17, boss: true, shootCooldown: 1.2, shootSpeed: 420, shootDamage: 1, shootCount: 1, shootSpread: 0, shootRadius: 9 }),
+    def({ id: 'croc', name: 'Swamp Croc', behavior: 'boss', hp: 120, speed: 100, radius: 30, color: '#5a7a3a', accent: '#24361a', feed: 22, boss: true, shootCooldown: 2.0, shootSpeed: 300, shootDamage: 1, shootCount: 4, shootSpread: 0.8, shootRadius: 12 }),
+    def({ id: 'lion', name: 'Maned Lion', behavior: 'boss', hp: 130, speed: 140, radius: 30, color: '#d8a24a', accent: '#7a4a16', feed: 24, boss: true, shootCooldown: 1.6, shootSpeed: 340, shootDamage: 1, shootCount: 3, shootSpread: 0.6, shootRadius: 11 }),
+    def({ id: 'shark', name: 'Land Shark', behavior: 'boss', hp: 150, speed: 130, radius: 32, color: '#7090a8', accent: '#2a3e52', feed: 26, boss: true, shootCooldown: 1.8, shootSpeed: 320, shootDamage: 1, shootCount: 5, shootSpread: 1.1, shootRadius: 12 }),
+    def({ id: 'tyrant', name: 'Tyrant Gator', behavior: 'boss', hp: 170, speed: 110, radius: 34, color: '#4a6a4a', accent: '#1a2e1a', feed: 28, boss: true, shootCooldown: 1.5, shootSpeed: 360, shootDamage: 1, shootCount: 7, shootSpread: 1.4, shootRadius: 13 }),
   ].map((entry) => [entry.id, entry]),
 ) as Record<string, EnemyDef>;
+
+export const ENEMY_DEFS: Record<string, EnemyDef> = Object.fromEntries(
+  Object.values(BASE_ENEMY_DEFS).map((entry) => {
+    if (entry.boss || UNNERFED_ENEMIES.includes(entry.id)) {
+      return [entry.id, entry];
+    }
+    return [
+      entry.id,
+      {
+        ...entry,
+        speed: entry.speed * NERF.speedMul,
+        shootCooldown: entry.shootCooldown * NERF.cooldownMul,
+        lungeCooldown: entry.lungeCooldown * NERF.cooldownMul,
+      },
+    ];
+  }),
+) as Record<string, EnemyDef>;
+
+/** The unique boss for each floor. Floors past the tenth reuse the list in order. */
+export const FLOOR_BOSS_IDS: readonly string[] = [
+  'rooster',
+  'vulture',
+  'cassowary',
+  'wolf',
+  'bear',
+  'hawk',
+  'croc',
+  'lion',
+  'shark',
+  'tyrant',
+];
+
+export function bossForFloor(depth: number): string {
+  return FLOOR_BOSS_IDS[(Math.max(1, depth) - 1) % FLOOR_BOSS_IDS.length]!;
+}
 
 export interface EnemyShotEvent {
   x: number;
@@ -242,6 +298,8 @@ export interface Enemy {
   bob: number;
   shootTimer: number;
   lungeTimer: number;
+  /** Rotation for spiral boss volleys. */
+  phase: number;
   knockX: number;
   knockY: number;
   feed: number;
@@ -296,6 +354,7 @@ export function makeEnemy(
     bob: Math.random() * Math.PI * 2,
     shootTimer: Math.random() * definition.shootCooldown,
     lungeTimer: definition.lungeCooldown * (0.5 + Math.random() * 0.5),
+    phase: 0,
     knockX: 0,
     knockY: 0,
     feed: definition.feed,
@@ -533,9 +592,10 @@ function behaviorMotion(
         e.facingY = aim.y;
         if (e.shootTimer <= 0 && ctx.playerAlive) {
           e.mode = 'telegraph';
-          e.timer = 0.5;
+          // Longer windup than regular enemies, so every attack is readable.
+          e.timer = 0.9;
         }
-        return { x: aim.x * speed, y: aim.y * speed };
+        return bossMotion(e, ctx, speed, dt, dist, aim);
       }
       if (e.mode === 'telegraph') {
         const aim = aimAt(e.x, e.y, ctx.playerX, ctx.playerY);
@@ -543,13 +603,171 @@ function behaviorMotion(
         e.facingY = aim.y;
         e.timer -= dt;
         if (e.timer <= 0) {
-          fireAimed(e, shots, aim);
+          // The phase advances each volley, so spirals keep turning.
+          e.phase = (e.phase + 0.35) % (Math.PI * 2);
+          fireBoss(e, shots, aim, e.phase);
           e.mode = 'move';
           e.shootTimer = e.def.shootCooldown;
         }
         return { x: 0, y: 0 };
       }
       return { x: 0, y: 0 };
+    }
+  }
+}
+
+/**
+ * How each boss moves. Movement is what makes two bosses feel different, so the
+ * styles below are picked per boss rather than all walking straight at you.
+ *   chase   walks straight at the player
+ *   strafe  circles the player at a set range, reversing every few seconds
+ *   dive    holds at range, then dashes through the player's position
+ *   orbit   drifts slowly around the room's centre
+ */
+export type BossMove = 'chase' | 'strafe' | 'dive' | 'orbit';
+
+const BOSS_MOVE: Record<string, BossMove> = {
+  rooster: 'chase',
+  vulture: 'orbit',
+  cassowary: 'dive',
+  wolf: 'strafe',
+  bear: 'chase',
+  hawk: 'dive',
+  croc: 'orbit',
+  lion: 'strafe',
+  shark: 'dive',
+  tyrant: 'orbit',
+};
+
+export function bossMove(id: string): BossMove {
+  return BOSS_MOVE[id] ?? 'chase';
+}
+
+function bossMotion(
+  e: Enemy,
+  ctx: EnemyContext,
+  speed: number,
+  dt: number,
+  dist: number,
+  aim: { x: number; y: number },
+): { x: number; y: number } {
+  switch (bossMove(e.def.id)) {
+    case 'chase':
+      return { x: aim.x * speed, y: aim.y * speed };
+    case 'strafe': {
+      // Tangential motion around the player, with a reversal every few seconds.
+      e.timer -= dt;
+      if (e.timer <= 0) {
+        e.dirX = -e.dirX || 1;
+        e.timer = 2.5;
+      }
+      const tangentX = -aim.y * e.dirX;
+      const tangentY = aim.x * e.dirX;
+      const pull = dist > 170 ? 1 : dist < 120 ? -1 : 0;
+      return { x: (tangentX + aim.x * pull) * speed, y: (tangentY + aim.y * pull) * speed };
+    }
+    case 'dive': {
+      // Keep distance, then dash through the player after a short pause.
+      e.timer -= dt;
+      if (e.timer <= 0) {
+        if (e.mode === 'move' && dist > 140) {
+          e.dirX = aim.x;
+          e.dirY = aim.y;
+          e.timer = 0.45;
+          return { x: e.dirX * speed * 3.2, y: e.dirY * speed * 3.2 };
+        }
+        e.timer = 1.2;
+      }
+      const pull = dist < 150 ? -1 : 0.25;
+      return { x: -aim.x * speed * pull, y: -aim.y * speed * pull };
+    }
+    case 'orbit': {
+      // Slow drift toward the room centre with a sideways sweep.
+      const cx = ctx.room.width * TILE * 0.5;
+      const cy = ctx.room.height * TILE * 0.5;
+      const toCx = cx - e.x;
+      const toCy = cy - e.y;
+      const len = Math.hypot(toCx, toCy) || 1;
+      return { x: (toCx / len) * speed * 0.5 - aim.y * speed * 0.6, y: (toCy / len) * speed * 0.5 + aim.x * speed * 0.6 };
+    }
+  }
+}
+
+/**
+ * Boss attack shapes. Every shape leaves a gap or a slow, readable pattern so
+ * the player can dodge by moving, instead of the big fan being unavoidable.
+ */
+export type BossPattern = 'aimed' | 'spiral' | 'ring-gap' | 'burst';
+
+const BOSS_PATTERN: Record<string, BossPattern> = {
+  rooster: 'aimed',
+  vulture: 'burst',
+  cassowary: 'aimed',
+  wolf: 'burst',
+  bear: 'ring-gap',
+  hawk: 'aimed',
+  croc: 'spiral',
+  lion: 'burst',
+  shark: 'ring-gap',
+  tyrant: 'spiral',
+};
+
+export function bossPattern(id: string): BossPattern {
+  return BOSS_PATTERN[id] ?? 'aimed';
+}
+
+function fireBoss(
+  e: Enemy,
+  shots: EnemyShotEvent[],
+  aim: { x: number; y: number },
+  phase: number,
+): void {
+  const pattern = bossPattern(e.def.id);
+  const { x, y } = e;
+  const speed = e.def.shootSpeed;
+  const push = (angle: number, s: number = speed) =>
+    shots.push({
+      x: x + Math.cos(angle) * (e.r + 2),
+      y: y + Math.sin(angle) * (e.r + 2),
+      vx: Math.cos(angle) * s,
+      vy: Math.sin(angle) * s,
+      damage: e.def.shootDamage,
+      radius: e.def.shootRadius,
+      color: e.def.accent,
+    });
+  const base = Math.atan2(aim.y, aim.x);
+
+  switch (pattern) {
+    case 'aimed':
+      // One clear shot straight at the player: dodge by sidestepping.
+      push(base);
+      return;
+    case 'burst':
+      // Two quick, slightly spread shots: the second is easy to step around.
+      push(base - 0.12);
+      push(base + 0.12);
+      return;
+    case 'spiral': {
+      // Eight evenly spaced shots, rotated a little each volley: walk the gaps.
+      const count = 8;
+      for (let i = 0; i < count; i++) {
+        push(phase + (i / count) * Math.PI * 2);
+      }
+      return;
+    }
+    case 'ring-gap': {
+      // A full ring with one gap aimed away from the player, so there is a
+      // safe lane to escape through.
+      const count = 12;
+      const gap = base + Math.PI;
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2;
+        let diff = Math.abs(angle - gap) % (Math.PI * 2);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff < Math.PI / 6) continue;
+        push(angle, speed * 0.8);
+      }
+      return;
     }
   }
 }

@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist-single/
+Cluckles.html
 *.local
 .DS_Store
 coverage/

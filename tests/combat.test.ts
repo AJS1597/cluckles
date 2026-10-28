@@ -1,11 +1,43 @@
 import { describe, expect, it } from 'vitest';
 import { CHICKEN_BY_ID, CHICKENS } from '../src/game/chickens/chickens';
 import { resolveProjectile } from '../src/game/chickens/types';
-import { makeEnemy, updateEnemy } from '../src/game/enemies/enemies';
+import {
+  ENEMY_DEFS,
+  FLOOR_BOSS_IDS,
+  bossMove,
+  bossPattern,
+  makeEnemy,
+  updateEnemy,
+} from '../src/game/enemies/enemies';
 import { makeBlankRoom } from '../src/game/level/roomFormat';
 import { BASE_MODS } from '../src/game/perks/perks';
 import { spawnFromFire, stepProjectile } from '../src/game/projectiles/projectiles';
 import { mulberry32 } from '../src/game/util/math';
+
+describe('enemy balance', () => {
+  it('nerfs every regular enemy except the rat and snake', () => {
+    const base = { cat: { speed: 132, lungeCooldown: 3.4 }, bat: { speed: 182 } };
+    expect(ENEMY_DEFS['cat']!.speed).toBeCloseTo(132 * 0.9);
+    expect(ENEMY_DEFS['cat']!.lungeCooldown).toBeCloseTo(3.4 * 1.15);
+    expect(ENEMY_DEFS['bat']!.speed).toBeCloseTo(base.bat.speed * 0.9);
+    expect(ENEMY_DEFS['rat']!.speed).toBe(126);
+    expect(ENEMY_DEFS['snake']!.speed).toBe(162);
+  });
+
+  it('gives every floor boss its own movement style', () => {
+    const moves = FLOOR_BOSS_IDS.map((id) => bossMove(id));
+    expect(new Set(moves).size).toBeGreaterThanOrEqual(3);
+    for (const id of FLOOR_BOSS_IDS) {
+      expect(['chase', 'strafe', 'dive', 'orbit']).toContain(bossMove(id));
+    }
+  });
+
+  it('gives every floor boss a defined attack pattern', () => {
+    for (const id of FLOOR_BOSS_IDS) {
+      expect(['aimed', 'burst', 'spiral', 'ring-gap']).toContain(bossPattern(id));
+    }
+  });
+});
 
 describe('chicken roster', () => {
   it('has at least ten chickens including a 3-shot and an explosive egg', () => {

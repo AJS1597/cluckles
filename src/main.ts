@@ -29,6 +29,8 @@ const prevent = new Set([
 window.addEventListener(
   'keydown',
   (event) => {
+    // Let text fields (the seed box) receive every key, including Space.
+    if (event.target instanceof HTMLInputElement) return;
     if (prevent.has(event.code) || prevent.has(event.key)) {
       event.preventDefault();
     }

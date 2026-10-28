@@ -399,6 +399,44 @@ export function findWalkableNear(room: EggRoom, tx: number, ty: number): { x: nu
 }
 
 /**
+ * Nearest tile that the player can actually walk to from the room's spawn.
+ * Plain `findWalkableNear` only checks solidity, so a pedestal can end up in a
+ * pocket walled off by rocks. This flood-fills from spawn and only picks tiles
+ * in that connected area.
+ */
+export function findReachableNear(room: EggRoom, tx: number, ty: number): { x: number; y: number } {
+  const start = roomSpawn(room);
+  const seen = new Set<number>();
+  const key = (x: number, y: number) => y * room.width + x;
+  const queue: { x: number; y: number }[] = [];
+  if (!charIsSolid(charAt(room, start.x, start.y))) {
+    queue.push(start);
+    seen.add(key(start.x, start.y));
+  }
+  for (let i = 0; i < queue.length; i++) {
+    const { x, y } = queue[i]!;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 1 || ny < 1 || nx >= room.width - 1 || ny >= room.height - 1) continue;
+      if (seen.has(key(nx, ny)) || charIsSolid(charAt(room, nx, ny))) continue;
+      seen.add(key(nx, ny));
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  let best = queue[0] ?? findWalkableNear(room, tx, ty);
+  let bestDist = Infinity;
+  for (const tile of queue) {
+    const d = Math.hypot(tile.x - tx, tile.y - ty);
+    if (d < bestDist) {
+      bestDist = d;
+      best = tile;
+    }
+  }
+  return { x: best.x, y: best.y };
+}
+
+/**
  * Where the player appears when they walk in through `side`. Steps inward from
  * the door and then snaps to the nearest walkable tile, so a door can never
  * spit you out inside a rock (e.g. the diamond room's centre columns).

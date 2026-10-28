@@ -6,6 +6,7 @@ import {
   autoPlace,
   cloneStack,
   makeStack,
+  rotateStack,
   type StackState,
 } from './stack';
 
@@ -43,9 +44,6 @@ export class RunState {
     for (const id of STARTER_CHICKENS) {
       this.addChicken(id);
     }
-    // Start with a second Henny so two directions are live from the first room.
-    this.addChicken('henny');
-    this.setSlot(2, 'henny');
   }
 
   get mods(): StatMods {
@@ -72,8 +70,31 @@ export class RunState {
     return placed.slot;
   }
 
+  /** How many copies of a chicken the flock owns. */
+  copiesOwned(chickenId: string): number {
+    return this.owned.filter((id) => id === chickenId).length;
+  }
+
+  /**
+   * Puts a chicken in a slot. A chicken can fill as many slots as copies of it
+   * are in the flock. If every copy is already equipped elsewhere, the slot is
+   * left unchanged.
+   */
   setSlot(slot: number, chickenId: string | null): void {
+    if (chickenId) {
+      const equippedElsewhere = this.stack.slots.filter(
+        (id, i) => id === chickenId && i !== slot,
+      ).length;
+      if (equippedElsewhere >= this.copiesOwned(chickenId)) {
+        return;
+      }
+    }
     this.stack = assignChicken(this.stack, slot, chickenId);
+  }
+
+  /** Turns the whole ring one slot: clockwise (E) or anticlockwise (Q). */
+  rotateStack(clockwise: boolean): void {
+    this.stack = rotateStack(this.stack, clockwise);
   }
 
   swapSlots(a: number, b: number): void {
@@ -140,7 +161,5 @@ export class RunState {
     for (const id of STARTER_CHICKENS) {
       this.addChicken(id);
     }
-    this.addChicken('henny');
-    this.setSlot(2, 'henny');
   }
 }

@@ -1,11 +1,13 @@
 import { RUN } from '../config';
 import { DIRS, type Dir } from '../dir';
 import { rollChicken } from '../chickens/chickens';
+import { bossForFloor } from '../enemies/enemies';
 import { rollPerk } from '../perks/perks';
 import { mulberry32, randInt, shuffled, type Rng } from '../util/math';
 import {
   cloneRoom,
   doorGapTiles,
+  findWalkableNear,
   roomEnemies,
   roomPedestals,
   roomSpawn,
@@ -160,7 +162,8 @@ function planReward(
 
 function planShop(rng: Rng, ownedChickens: readonly string[], ownedPerks: readonly string[]): ShopEntry[] {
   const entries: ShopEntry[] = [];
-  const kinds: RewardKind[] = ['chicken', 'perk', 'feed', 'heart'];
+  // Feed is never sold: it only comes from enemies, rooms, and rewards.
+  const kinds: RewardKind[] = ['chicken', 'perk', 'heart'];
   while (entries.length < 3) {
     const kind = kinds[randInt(rng, 0, kinds.length)]!;
     const price = randInt(rng, RUN.shopPriceMin, RUN.shopPriceMax + 1);
@@ -175,10 +178,8 @@ function planShop(rng: Rng, ownedChickens: readonly string[], ownedPerks: readon
       if (perk) {
         entries.push({ price, plan: { kind, perkId: perk.id }, sold: false });
       } else {
-        entries.push({ price, plan: { kind: 'feed', amount: randInt(rng, 20, 36) }, sold: false });
+        entries.push({ price, plan: { kind: 'heart' }, sold: false });
       }
-    } else if (kind === 'feed') {
-      entries.push({ price, plan: { kind, amount: randInt(rng, 20, 36) }, sold: false });
     } else {
       entries.push({ price, plan: { kind }, sold: false });
     }
@@ -223,10 +224,13 @@ function generateSpawns(node: DungeonNode, depth: number, rng: Rng): EnemySpec[]
   const spawns: EnemySpec[] = [];
 
   if (node.role === 'boss') {
-    spawns.push({ type: 'rooster', x: Math.floor(node.room.width / 2), y: 2 });
-    const minions = Math.min(2, open.length);
+    // Spawn on the nearest walkable tile to the centre so the boss is never placed inside fence or rock.
+    const boss = findWalkableNear(node.room, Math.floor(node.room.width / 2), Math.floor(node.room.height / 2));
+    spawns.push({ type: bossForFloor(depth), x: boss.x, y: boss.y });
+    const minionTiles = open.filter((tile) => tile.x !== boss.x || tile.y !== boss.y);
+    const minions = Math.min(2, minionTiles.length);
     for (let i = 0; i < minions; i++) {
-      const tile = open[i]!;
+      const tile = minionTiles[i]!;
       spawns.push({ type: pool[randInt(rng, 0, pool.length)]!, x: tile.x, y: tile.y });
     }
     return spawns;

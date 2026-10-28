@@ -111,10 +111,10 @@ export function drawChickenOnRing(
   recoil: number,
   time: number,
 ): void {
-  const drift = Math.sin(time * 3 + angle) * 0.8;
   const out = recoil * 7;
   const px = cx + Math.cos(angle) * out;
-  const py = cy + Math.sin(angle) * out + drift;
+  const py = cy + Math.sin(angle) * out;
+  const drift = 0;
 
   shadow(ctx, cx, cy + 8, 8, 3.5, 0.18);
 
@@ -147,95 +147,24 @@ function drawEmptySlot(ctx: CanvasRenderingContext2D, cx: number, cy: number, ti
   ctx.restore();
 }
 
+/**
+ * Every chicken in the stack sits on the player's position, stacked on top of
+ * each other. The keeper sprite is not drawn; the chickens are the player.
+ */
+const FORMATION: Record<number, { x: number; y: number }> = {
+  0: { x: 0, y: 0 },
+  1: { x: 0, y: 0 },
+  2: { x: 0, y: 0 },
+  3: { x: 0, y: 0 },
+};
+
 export function drawPlayer(ctx: CanvasRenderingContext2D, v: PlayerVisual, time: number): void {
-  // Ring behind the player, so nearer chickens overlap the body.
-  const back = [0, 3];
-  const front = [1, 2];
-  const ringR = 30;
-
-  for (const i of back) {
+  for (const i of [0, 1, 2, 3]) {
     const def = v.stack[i] ?? null;
     const dir = DIRS[i]!;
     const angle = dirAngle(dir);
-    const cx = v.x + Math.cos(angle) * ringR;
-    const cy = v.y + Math.sin(angle) * ringR;
-    if (def) {
-      drawChickenOnRing(ctx, cx, cy, angle, def, v.cooldownFrac[i] ?? 1, v.recoil[i] ?? 0, time);
-    } else {
-      drawEmptySlot(ctx, cx, cy, time);
-    }
-  }
-
-  shadow(ctx, v.x, v.y + 15, 14, 5, 0.3);
-
-  const bob = Math.sin(time * 6) * 1.2;
-  ctx.save();
-  ctx.translate(v.x, v.y + bob);
-
-  // Body: a little keeper in a straw hat.
-  const bodyGrad = ctx.createRadialGradient(-4, -4, 2, 0, 2, 18);
-  bodyGrad.addColorStop(0, '#fffdf3');
-  bodyGrad.addColorStop(0.7, '#f0e6cf');
-  bodyGrad.addColorStop(1, '#cdbf9f');
-  ctx.fillStyle = bodyGrad;
-  ctx.strokeStyle = '#a89a7c';
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.ellipse(0, 2, 14, 13, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  // Overalls strap
-  ctx.strokeStyle = '#7a5c3a';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(-6, -6);
-  ctx.lineTo(-3, 12);
-  ctx.moveTo(6, -6);
-  ctx.lineTo(3, 12);
-  ctx.stroke();
-
-  // Eyes look toward facing.
-  const lookX = clamp(v.facingX, -1, 1) * 2.4;
-  const lookY = clamp(v.facingY, -1, 1) * 2.2;
-  ctx.fillStyle = '#241c18';
-  ctx.beginPath();
-  ctx.arc(-4.4 + lookX, -2 + lookY, 1.9, 0, Math.PI * 2);
-  ctx.arc(4.4 + lookX, -2 + lookY, 1.9, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.9)';
-  ctx.beginPath();
-  ctx.arc(-4.9 + lookX, -2.6 + lookY, 0.6, 0, Math.PI * 2);
-  ctx.arc(3.9 + lookX, -2.6 + lookY, 0.6, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Hat
-  ctx.fillStyle = '#c69a58';
-  ctx.beginPath();
-  ctx.ellipse(0, -11, 13, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#dcb26a';
-  ctx.beginPath();
-  ctx.arc(0, -14, 7.5, Math.PI, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#a97e42';
-  ctx.fillRect(-7.5, -13.4, 15, 2);
-
-  // Tiny feet
-  ctx.fillStyle = '#b9762f';
-  ctx.beginPath();
-  ctx.ellipse(-5, 15, 3, 2, 0, 0, Math.PI * 2);
-  ctx.ellipse(5, 15, 3, 2, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
-
-  for (const i of front) {
-    const def = v.stack[i] ?? null;
-    const dir = DIRS[i]!;
-    const angle = dirAngle(dir);
-    const cx = v.x + Math.cos(angle) * ringR;
-    const cy = v.y + Math.sin(angle) * ringR;
+    const cx = v.x + FORMATION[i]!.x;
+    const cy = v.y + FORMATION[i]!.y;
     if (def) {
       drawChickenOnRing(ctx, cx, cy, angle, def, v.cooldownFrac[i] ?? 1, v.recoil[i] ?? 0, time);
     } else {
@@ -322,6 +251,148 @@ function drawQuadruped(ctx: CanvasRenderingContext2D, e: Enemy, time: number, ea
   ctx.beginPath();
   ctx.ellipse(0, -r * 0.42, r * 0.2, r * 0.15, 0, 0, Math.PI * 2);
   ctx.fill();
+}
+
+/**
+ * Shared drawing for the floor bosses. Each one has a body and one signature
+ * feature so the bosses read as different creatures at a glance.
+ */
+function drawBossSilhouette(ctx: CanvasRenderingContext2D, e: Enemy, time: number): void {
+  const { id, color, accent } = e.def;
+  const r = e.r;
+  const flap = Math.sin(time * 6) * 0.3;
+  ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : color;
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 2;
+
+  switch (id) {
+    case 'vulture':
+    case 'hawk': {
+      // Wide wings, hooked beak.
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.ellipse(-r * 1.1, 0, r * 1.2, r * 0.45, -flap, 0, Math.PI * 2);
+      ctx.ellipse(r * 1.1, 0, r * 1.2, r * 0.45, flap, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.8, r, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f2b24a';
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.2, -r * 0.7);
+      ctx.quadraticCurveTo(0, -r * 1.25, r * 0.2, -r * 0.7);
+      ctx.fill();
+      drawEyes(ctx, e.facingX, e.facingY, r * 0.22, '#ffe066');
+      return;
+    }
+    case 'cassowary': {
+      // Tall body with a helmet crest and a dagger-like claw.
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.9, r * 1.1, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 1.1);
+      ctx.lineTo(-r * 0.3, -r * 1.7);
+      ctx.lineTo(r * 0.3, -r * 1.7);
+      ctx.closePath();
+      ctx.fill();
+      drawEyes(ctx, e.facingX, e.facingY, r * 0.2, '#ffe066');
+      return;
+    }
+    case 'wolf':
+    case 'lion': {
+      // Four-legged body, pointed ears, and a mane ring for the lion.
+      if (id === 'lion') {
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 1.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : color;
+      }
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r, r * 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.6, -r * 0.6);
+      ctx.lineTo(-r * 0.35, -r * 1.2);
+      ctx.lineTo(-r * 0.1, -r * 0.7);
+      ctx.moveTo(r * 0.6, -r * 0.6);
+      ctx.lineTo(r * 0.35, -r * 1.2);
+      ctx.lineTo(r * 0.1, -r * 0.7);
+      ctx.fill();
+      drawEyes(ctx, e.facingX, e.facingY, r * 0.22, '#ffe066');
+      return;
+    }
+    case 'bear': {
+      // Round, heavy body with rounded ears.
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.arc(-r * 0.7, -r * 0.7, r * 0.3, 0, Math.PI * 2);
+      ctx.arc(r * 0.7, -r * 0.7, r * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      drawEyes(ctx, e.facingX, e.facingY, r * 0.2);
+      return;
+    }
+    case 'croc':
+    case 'tyrant': {
+      // Long jaws with teeth, and a ridged spine for the gators.
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 1.3, r * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fffdf0';
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(r * 1.1 + i * 2, -2);
+        ctx.lineTo(r * 1.2 + i * 2, 4);
+        ctx.lineTo(r * 1.3 + i * 2, -2);
+        ctx.fill();
+      }
+      ctx.fillStyle = accent;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.arc(i * r * 0.35, -r * 0.5, r * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      drawEyes(ctx, e.facingX, e.facingY, r * 0.2, '#ffe066');
+      return;
+    }
+    case 'shark': {
+      // Fin on the back and a wide toothy grin.
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r, r * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.2, -r * 0.6);
+      ctx.lineTo(r * 0.2, -r * 0.6);
+      ctx.lineTo(0, -r * 1.3);
+      ctx.fill();
+      ctx.fillStyle = '#fffdf0';
+      ctx.beginPath();
+      ctx.moveTo(r * 0.5, -r * 0.1);
+      ctx.lineTo(r * 0.9, 0.1 * r);
+      ctx.lineTo(r * 0.5, r * 0.3);
+      ctx.fill();
+      drawEyes(ctx, e.facingX, e.facingY, r * 0.2, '#ffe066');
+      return;
+    }
+    default:
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      drawEyes(ctx, e.facingX, e.facingY, r * 0.3);
+  }
 }
 
 function drawEnemyBody(ctx: CanvasRenderingContext2D, e: Enemy, time: number): void {
@@ -469,6 +540,17 @@ function drawEnemyBody(ctx: CanvasRenderingContext2D, e: Enemy, time: number): v
       drawEyes(ctx, e.facingX, e.facingY, r * 0.26);
       return;
     }
+    case 'vulture':
+    case 'cassowary':
+    case 'wolf':
+    case 'bear':
+    case 'hawk':
+    case 'croc':
+    case 'lion':
+    case 'shark':
+    case 'tyrant':
+      drawBossSilhouette(ctx, e, time);
+      return;
     case 'rooster': {
       // Tail feathers
       ctx.fillStyle = accent;

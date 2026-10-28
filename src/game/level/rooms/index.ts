@@ -1,6 +1,11 @@
 import { parseEgg, type EggRoom, type RoomRole } from '../roomFormat';
 
+import bossArena from './boss-arena.egg?raw';
 import bossPit from './boss-pit.egg?raw';
+import bossRing from './boss-ring.egg?raw';
+import crossYard from './cross-yard.egg?raw';
+import fenceRun from './fence-run.egg?raw';
+import swampLagoon from './swamp-lagoon.egg?raw';
 import bossYard from './boss-yard.egg?raw';
 import cornerNooks from './corner-nooks.egg?raw';
 import crossRoads from './cross-roads.egg?raw';
@@ -45,6 +50,11 @@ export const BUILTIN_EGG_SOURCES: readonly string[] = [
   feedMarket,
   bossPit,
   bossYard,
+  bossArena,
+  bossRing,
+  crossYard,
+  fenceRun,
+  swampLagoon,
   exitNest,
   exitStairs,
 ];

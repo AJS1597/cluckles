@@ -1,6 +1,6 @@
 import { Actor, Canvas, Scene, vec, type Engine } from 'excalibur';
 import * as CONFIG from '../config';
-import { ENEMY, STACK, TILE, VIEW } from '../config';
+import { ENEMY, TILE, VIEW } from '../config';
 import { CHICKEN_BY_ID, rollChicken } from '../chickens/chickens';
 import { resolveProjectile } from '../chickens/types';
 import { DIRS, OPPOSITE, dirAngle } from '../dir';
@@ -25,6 +25,7 @@ import { loadBuiltinRooms } from '../level/rooms';
 import {
   doorCenterTile,
   doorEntryTile,
+  findReachableNear,
   findWalkableNear,
   roomPedestals,
   roomSpawn,
@@ -54,9 +55,11 @@ import { Hud, type StackSelection } from '../ui/hud';
 import { InputMap } from '../input/InputMap';
 import { Sfx } from '../audio/sfx';
 import { circlesOverlap } from '../util/aabb';
-import { clamp, mulberry32, type Rng } from '../util/math';
+import { clamp, mulberry32, seedFromText, type Rng } from '../util/math';
 
-export type GameMode = 'play' | 'stack' | 'perks' | 'dead' | 'victory';
+export type GameMode = 'menu' | 'play' | 'stack' | 'perks' | 'map' | 'dead' | 'victory';
+
+/** Rooms the player has entered this floor, used for the map. */
 
 interface RoomPedestal {
   kind: PedestalKind;
@@ -112,15 +115,15 @@ export class GameScene extends Scene {
 
     this.roomPool = [...loadBuiltinRooms(), ...loadCustomRooms()];
     this.run = new RunState();
-    this.rng = mulberry32(this.run.seed ^ 0x51ed270b);
-    this.dungeon = this.buildDungeon();
     this.player = makePlayer(0, 0);
 
     this.particles = new Particles();
     this.hud = new Hud(() => this.restart());
     this.inputMap = new InputMap(engine, {
       onToggleStack: () => this.toggleOverlay('stack'),
+      onRotateStack: (clockwise) => this.rotateStack(clockwise),
       onTogglePerks: () => this.toggleOverlay('perks'),
+      onToggleMap: () => this.toggleOverlay('map'),
       onRestart: () => this.restart(),
       onToggleDebug: () => this.toggleDebug(),
     });
@@ -135,10 +138,10 @@ export class GameScene extends Scene {
     this.worldActor.graphics.use(this.worldGraphic);
     this.add(this.worldActor);
 
-    const start = this.dungeon.nodes.get(this.dungeon.startKey)!;
-    this.enterNode(start, null, true);
-
-    this.hud.update(this.run, this.room.name);
+    // Build a valid world behind the menu so drawing never sees an empty room.
+    this.dungeon = this.buildDungeon();
+    this.enterNode(this.dungeon.nodes.get(this.dungeon.startKey)!, null, true);
+    this.showMenu();
 
     const unlock = () => this.sfx.unlock();
     window.addEventListener('pointerdown', unlock, { once: true });
@@ -169,7 +172,7 @@ export class GameScene extends Scene {
     }
     this.particles.update(dt);
 
-    if (this.mode === 'dead' || this.mode === 'victory') {
+    if (this.mode === 'menu' || this.mode === 'dead' || this.mode === 'victory') {
       this.time += dt;
       return;
     }
@@ -257,7 +260,8 @@ export class GameScene extends Scene {
     // They only appear on the first visit to avoid re-collecting them.
     if (firstVisit) {
       for (const authored of roomPedestals(node.room)) {
-        this.addPedestal(authored.kind, authored.x, authored.y, this.rollAuthoredReward(authored.kind));
+        const tile = this.findOpenTile(node.room, authored.x, authored.y);
+        this.addPedestal(authored.kind, tile.x, tile.y, this.rollAuthoredReward(authored.kind));
       }
     }
 
@@ -336,7 +340,7 @@ export class GameScene extends Scene {
   }
 
   private findOpenTile(room: EggRoom, tx: number, ty: number): { x: number; y: number } {
-    return findWalkableNear(room, tx, ty);
+    return findReachableNear(room, tx, ty);
   }
 
   // ----------------------------------------------------------------- combat
@@ -346,7 +350,6 @@ export class GameScene extends Scene {
       const dir = DIRS[slot]!;
       if (!input.shoot[dir]) continue;
       if ((this.player.slotCooldown[slot] ?? 0) > 0) continue;
-      if (this.player.globalCooldown > 0) break;
 
       const id = this.run.stack.slots[slot];
       if (!id) continue;
@@ -359,7 +362,6 @@ export class GameScene extends Scene {
       const oy = this.player.y + Math.sin(angle) * (this.player.r + 8);
       this.projectiles.push(...spawnFromFire(fire, ox, oy, angle));
       this.player.slotCooldown[slot] = fire.cooldown;
-      this.player.globalCooldown = STACK.globalCooldown;
       this.slotRecoil[slot] = 1;
       this.sfx.shoot();
       this.particles.burst(ox, oy, fire.color, 3, 70);
@@ -677,10 +679,12 @@ export class GameScene extends Scene {
         const id = plan.chickenId ?? rollChicken(this.run.owned, this.rng).id;
         const slot = this.run.addChicken(id);
         const def = CHICKEN_BY_ID[id];
-        this.hud.toast(
-          slot >= 0 ? `${def?.name ?? 'Chicken'} joined the stack (${DIRS[slot]})` : `${def?.name ?? 'Chicken'} joined (stack full)`,
-          'good',
-        );
+        const name = def?.name ?? 'Chicken';
+        const message =
+          slot >= 0
+            ? `${name} joined the stack (${DIRS[slot]})`
+            : `${name} joined the flock (stack full)`;
+        this.hud.toast(message, 'good');
         this.sfx.chicken();
         break;
       }
@@ -777,15 +781,17 @@ export class GameScene extends Scene {
 
   // ---------------------------------------------------------------------- UI
 
-  private toggleOverlay(which: 'stack' | 'perks'): void {
-    if (this.mode === 'dead' || this.mode === 'victory') return;
+  private toggleOverlay(which: 'stack' | 'perks' | 'map'): void {
+    if (this.mode === 'menu' || this.mode === 'dead' || this.mode === 'victory') return;
     if (this.mode === which) {
       this.closeOverlay();
       return;
     }
     this.mode = which;
     this.stackSelection = null;
-    if (which === 'stack') {
+    if (which === 'map') {
+      this.hud.showMap(this.dungeon, this.node.key, this.visitedKeys());
+    } else if (which === 'stack') {
       this.hud.showStack(this.run, this.stackSelection, {
         selectInventory: (index) => this.onSelectInventory(index),
         selectSlot: (slot) => this.onSelectSlot(slot),
@@ -794,6 +800,22 @@ export class GameScene extends Scene {
     } else {
       this.hud.showPerks(this.run, () => this.closeOverlay());
     }
+  }
+
+  /** Q/E: turn the ring. Only while playing, so menus and overlays are untouched. */
+  private rotateStack(clockwise: boolean): void {
+    if (this.mode !== 'play') return;
+    this.run.rotateStack(clockwise);
+    this.sfx.pickup();
+  }
+
+  /** Room keys the player has entered on this floor. */
+  private visitedKeys(): Set<string> {
+    const keys = new Set<string>();
+    for (const node of this.dungeon.nodes.values()) {
+      if (node.visited) keys.add(node.key);
+    }
+    return keys;
   }
 
   closeOverlay(): void {
@@ -868,8 +890,19 @@ export class GameScene extends Scene {
     }
   }
 
-  private restart(): void {
-    this.run.reset();
+  /** Shows the seed menu. The run is paused until the player starts one. */
+  private showMenu(): void {
+    this.mode = 'menu';
+    this.hud.hideEnd();
+    this.hud.closeOverlay();
+    this.hud.showMenu((text) => this.startRun(text));
+  }
+
+  /** Starts a fresh run from the seed text; blank means a random seed. */
+  private startRun(seedText: string): void {
+    const seed = seedText.trim() === '' ? Math.floor(Math.random() * 0xffffffff) : seedFromText(seedText);
+    this.hud.hideMenu();
+    this.run.reset(seed >>> 0);
     this.rng = mulberry32(this.run.seed ^ 0x51ed270b);
     this.dungeon = this.buildDungeon();
     this.mode = 'play';
@@ -879,7 +912,13 @@ export class GameScene extends Scene {
     this.enemyIdCounter = 0;
     const start = this.dungeon.nodes.get(this.dungeon.startKey)!;
     this.enterNode(start, null, true);
-    this.hud.toast('FRESH FLOCK');
+    this.hud.toast(`SEED ${this.run.seed}`);
+  }
+
+  private restart(): void {
+    // Typing in the seed box also sends key presses; ignore them on the menu.
+    if (this.mode === 'menu') return;
+    this.showMenu();
   }
 
   private debugText(): string {

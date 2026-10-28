@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { OPPOSITE } from '../src/game/dir';
-import { generateDungeon, neighborKey } from '../src/game/level/dungeon';
+import { ensureSpawns, generateDungeon, neighborKey } from '../src/game/level/dungeon';
+import { bossForFloor } from '../src/game/enemies/enemies';
+import { mulberry32 } from '../src/game/util/math';
 import { loadBuiltinRooms } from '../src/game/level/rooms';
+import { seedFromText } from '../src/game/util/math';
 
 function build(seed: number, depth = 1) {
   return generateDungeon({
@@ -12,6 +15,52 @@ function build(seed: number, depth = 1) {
     ownedPerks: [],
   });
 }
+
+describe('floor bosses', () => {
+  it('gives every one of the first 10 floors a unique boss', () => {
+    const ids = Array.from({ length: 10 }, (_, i) => bossForFloor(i + 1));
+    expect(new Set(ids).size).toBe(10);
+  });
+
+  it('places the floor boss in the boss room', () => {
+    const dungeon = generateDungeon({
+      seed: 3,
+      depth: 4,
+      pool: loadBuiltinRooms(),
+      ownedChickens: [],
+      ownedPerks: [],
+    });
+    const boss = dungeon.nodes.get(dungeon.bossKey)!;
+    expect(ensureSpawns(boss, 4, mulberry32(1))[0]!.type).toBe(bossForFloor(4));
+  });
+});
+
+describe('shop stock', () => {
+  it('never sells feed', () => {
+    for (let seed = 0; seed < 60; seed++) {
+      const dungeon = generateDungeon({
+        seed,
+        depth: 1,
+        pool: loadBuiltinRooms(),
+        ownedChickens: [],
+        ownedPerks: [],
+      });
+      for (const node of dungeon.nodes.values()) {
+        for (const entry of node.shop ?? []) {
+          expect(entry.plan.kind).not.toBe('feed');
+        }
+      }
+    }
+  });
+});
+
+describe('seed text', () => {
+  it('maps the same text to the same seed and numbers to themselves', () => {
+    expect(seedFromText('cluck')).toBe(seedFromText(' cluck '));
+    expect(seedFromText('cluck')).not.toBe(seedFromText('clucks'));
+    expect(seedFromText('42')).toBe(42);
+  });
+});
 
 describe('floor generation', () => {
   it('always produces a fully connected graph', () => {

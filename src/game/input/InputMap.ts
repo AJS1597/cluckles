@@ -4,13 +4,15 @@ import type { PlayerInput } from '../entities/player';
 
 export interface InputCallbacks {
   onToggleStack: () => void;
+  onRotateStack: (clockwise: boolean) => void;
   onTogglePerks: () => void;
+  onToggleMap: () => void;
   onRestart: () => void;
   onToggleDebug: () => void;
 }
 
 /**
- * WASD moves, arrows shoot the chicken facing that way. Overlay hotkeys are
+ * WASD moves, arrows shoot the chicken facing that way, Q/E rotate the stack. Overlay hotkeys are
  * handled on the keydown edge so a quick tap is never dropped.
  */
 export class InputMap {
@@ -44,12 +46,20 @@ export class InputMap {
 
   private readonly handlePress = (event: KeyEvent): void => {
     switch (event.key) {
-      case Keys.E:
       case Keys.Tab:
         this.callbacks.onToggleStack();
         break;
+      case Keys.E:
+        this.callbacks.onRotateStack(true);
+        break;
+      case Keys.Q:
+        this.callbacks.onRotateStack(false);
+        break;
       case Keys.P:
         this.callbacks.onTogglePerks();
+        break;
+      case Keys.M:
+        this.callbacks.onToggleMap();
         break;
       case Keys.Space:
       case Keys.Enter:

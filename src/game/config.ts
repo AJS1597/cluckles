@@ -67,7 +67,7 @@ export const COMBAT = {
 } as const;
 
 export const RUN = {
-  floorsToWin: 5,
+  floorsToWin: 10,
   maxRooms: 11,
   roomsFloor1: 7,
   roomsPerFloor: 1,

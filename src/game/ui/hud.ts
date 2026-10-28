@@ -2,6 +2,7 @@ import { CHICKEN_BY_ID } from '../chickens/chickens';
 import { PERK_BY_ID } from '../perks/perks';
 import { DIRS, type Dir } from '../dir';
 import type { RunState } from '../systems/run';
+import type { Dungeon } from '../level/dungeon';
 
 const DIR_GLYPH: Record<Dir, string> = {
   up: '▲',
@@ -15,6 +16,15 @@ export interface StackHandlers {
   selectSlot: (slot: number) => void;
   close: () => void;
 }
+
+const MAP_ROLE_LABEL: Record<string, string> = {
+  start: 'S',
+  combat: '',
+  treasure: 'T',
+  shop: '$',
+  boss: 'B',
+  exit: '↓',
+};
 
 export type StackSelection = { kind: 'inventory'; index: number } | { kind: 'slot'; slot: number } | null;
 
@@ -203,7 +213,7 @@ export class Hud {
         <h3>Your flock</h3>
         <div class="inv-row">${inventory}</div>
         <div class="detail">${detail}</div>
-        <footer class="panel-foot"><span><kbd>E</kbd> or <kbd>ESC</kbd> to close</span></footer>
+        <footer class="panel-foot"><span><kbd>TAB</kbd> or <kbd>ESC</kbd> to close</span></footer>
       </div>
     `);
 
@@ -283,6 +293,58 @@ export class Hud {
 
   hideEnd(): void {
     this.endScreen.hidden = true;
+  }
+
+  /** Shows the start menu; `onStart` receives the raw seed text (may be blank). */
+  showMenu(onStart: (seedText: string) => void): void {
+    const menu = must('menu');
+    const form = must('seed-form') as HTMLFormElement;
+    const input = must('seed-input') as HTMLInputElement;
+    input.value = '';
+    menu.hidden = false;
+    form.onsubmit = (event) => {
+      event.preventDefault();
+      onStart(input.value);
+    };
+    input.focus();
+  }
+
+  /** Draws the floor map: only rooms in `visited` are shown; the current one is highlighted. */
+  showMap(dungeon: Dungeon, currentKey: string, visited: Set<string>): void {
+    const cells: string[] = [];
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 7; col++) {
+        const key = `${col},${row}`;
+        const node = dungeon.nodes.get(key);
+        let cls = 'map-cell hidden';
+        let label = '';
+        if (node && visited.has(key)) {
+          cls = `map-cell ${node.role}`;
+          if (key === currentKey) cls += ' current';
+          label = MAP_ROLE_LABEL[node.role];
+        } else if (node) {
+          cls = 'map-cell unknown';
+          label = '?';
+        }
+        cells.push(`<div class="${cls}">${label}</div>`);
+      }
+    }
+    this.openOverlay(`
+      <div class="panel map-panel">
+        <header class="panel-head">
+          <h2>Floor Map</h2>
+          <button class="panel-close" data-close="1">close ✕</button>
+        </header>
+        <p class="muted">Rooms you have seen this floor. <span class="map-key">●</span> you are here · <span class="map-key">?</span> unexplored.</p>
+        <div class="map-grid">${cells.join('')}</div>
+        <footer class="panel-foot"><span><kbd>M</kbd> or <kbd>ESC</kbd> to close</span></footer>
+      </div>
+    `);
+    this.overlayPanel.querySelector<HTMLButtonElement>('[data-close]')?.addEventListener('click', () => this.closeOverlay());
+  }
+
+  hideMenu(): void {
+    must('menu').hidden = true;
   }
 }
 

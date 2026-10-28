@@ -24,6 +24,16 @@ describe('chicken stack', () => {
     expect(chickenAt(stack, 'down')).toBeNull();
   });
 
+  it('allows a chicken in every direction at once (independent slots)', () => {
+    let stack = makeStack();
+    for (let i = 0; i < 4; i++) {
+      stack = assignChicken(stack, i, `chicken-${i}`);
+    }
+    for (const dir of ['up', 'right', 'down', 'left'] as const) {
+      expect(chickenAt(stack, dir)).not.toBeNull();
+    }
+  });
+
   it('auto-places into the first empty slot then reports full', () => {
     let stack = makeStack();
     for (let i = 0; i < 4; i++) {

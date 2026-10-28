@@ -38,6 +38,17 @@ export function assignChicken(stack: StackState, slot: number, chickenId: string
   return next;
 }
 
+/** Shift every chicken one slot clockwise (or anticlockwise) around the ring. */
+export function rotateStack(stack: StackState, clockwise: boolean): StackState {
+  const count = stack.slots.length;
+  const step = clockwise ? 1 : -1;
+  const next = makeStack();
+  for (let i = 0; i < count; i++) {
+    next.slots[(i + step + count) % count] = stack.slots[i] ?? null;
+  }
+  return next;
+}
+
 export function clearSlot(stack: StackState, slot: number): StackState {
   return assignChicken(stack, slot, null);
 }

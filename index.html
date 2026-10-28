@@ -45,7 +45,8 @@
         <aside class="controls" aria-label="Controls">
           <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</div>
           <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> shoot that chicken</div>
-          <div><kbd>E</kbd> chicken stack <kbd>P</kbd> perks</div>
+          <div><kbd>Q</kbd> <kbd>E</kbd> rotate stack</div>
+          <div><kbd>TAB</kbd> chicken stack <kbd>P</kbd> perks <kbd>M</kbd> map</div>
           <div><kbd>SPACE</kbd> interact <kbd>R</kbd> new run</div>
           <div><kbd>F1</kbd> debug</div>
         </aside>
@@ -59,6 +60,18 @@
       <!-- GUI overlay (chicken stack + perks are rendered into #overlay-panel) -->
       <div id="overlay" class="overlay" hidden>
         <div id="overlay-panel"></div>
+      </div>
+
+      <!-- Main menu: pick a seed (blank = random) and start a run -->
+      <div id="menu" class="overlay end">
+        <div class="overlay-card">
+          <h2>CLUCKLES</h2>
+          <p>Enter a seed to replay the same run, or leave it blank for a random one.</p>
+          <form id="seed-form" class="seed-form" autocomplete="off">
+            <input id="seed-input" type="text" maxlength="32" placeholder="random" aria-label="Run seed" />
+            <button id="menu-start" class="big-button" type="submit">START RUN</button>
+          </form>
+        </div>
       </div>
 
       <!-- Death / victory -->

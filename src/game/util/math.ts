@@ -70,6 +70,23 @@ export function weightedPick<T>(rng: Rng, items: readonly T[], weight: (item: T)
   return items[items.length - 1] ?? null;
 }
 
+/**
+ * Turns any text into a 32-bit seed (FNV-1a), so a typed seed always maps to
+ * the same run. Numeric input is kept as-is so existing numeric seeds match.
+ */
+export function seedFromText(text: string): number {
+  const trimmed = text.trim();
+  if (/^\d+$/.test(trimmed)) {
+    return Number(trimmed) >>> 0;
+  }
+  let h = 0x811c9dc5;
+  for (let i = 0; i < trimmed.length; i++) {
+    h ^= trimmed.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
 /** Deterministic 0..1 hash, used for stable tile variation and art. */
 export function hash2(x: number, y: number, seed = 0): number {
   let h = (x * 374761393 + y * 668265263 + seed * 2147483647) | 0;

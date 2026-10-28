@@ -599,6 +599,25 @@ kbd {
   cursor: pointer;
 }
 
+.seed-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.seed-form input {
+  pointer-events: auto;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-edge);
+  background: #120d18;
+  color: var(--ink);
+  font-family: monospace;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
 .ghost-button {
   pointer-events: auto;
   width: 100%;
@@ -622,6 +641,7 @@ kbd {
 
 #overlay[hidden],
 #endscreen[hidden],
+#menu[hidden],
 #shop-prompt[hidden],
 #debug[hidden] {
   display: none;
@@ -776,10 +796,54 @@ kbd {
   text-align: center;
 }
 
+.stack-panel.panel {
+  width: min(960px, 94vw);
+}
+
+.map-panel.panel {
+  width: min(520px, 92vw);
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 14px 0;
+}
+
+.map-cell {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.map-cell.hidden {
+  border-color: transparent;
+}
+
+.map-cell.unknown {
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.map-cell.start { background: rgba(120, 220, 140, 0.25); }
+.map-cell.combat { background: rgba(255, 255, 255, 0.1); }
+.map-cell.treasure { background: rgba(255, 207, 92, 0.25); }
+.map-cell.shop { background: rgba(127, 208, 227, 0.25); }
+.map-cell.boss { background: rgba(220, 80, 80, 0.3); }
+.map-cell.exit { background: rgba(190, 140, 255, 0.3); }
+.map-cell.current {
+  outline: 2px solid var(--accent);
+}
+
 .ring-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 14px;
   margin: 14px 0;
 }
 

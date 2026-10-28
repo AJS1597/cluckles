@@ -33,13 +33,23 @@ pnpm build        # static build in dist/ (index.html + editor.html)
 
 > Requires Node >= 20.19.
 
+### Single-file build
+
+```bash
+pnpm build:single  # writes Cluckles.html to the project root
+```
+
+`Cluckles.html` is a self-contained copy of the game. Open it directly in a
+browser, or share the file. It is git-ignored, so rebuild it after changes.
+
 ## Controls
 
 | Action | Keys |
 | --- | --- |
 | Move | `W` `A` `S` `D` |
 | Shoot the chicken facing that way | `↑` `↓` `←` `→` |
-| Chicken stack GUI | `E` or `Tab` |
+| Rotate chicken stack clockwise / anticlockwise | `E` / `Q` |
+| Chicken stack GUI | `Tab` |
 | Perks GUI | `P` |
 | Interact / buy | `Space` |
 | New run | `R` |

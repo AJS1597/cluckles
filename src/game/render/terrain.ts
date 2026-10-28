@@ -34,6 +34,11 @@ function drawFloor(ctx: CanvasRenderingContext2D, x: number, y: number, hash: nu
 }
 
 function drawWall(ctx: CanvasRenderingContext2D, x: number, y: number, hash: number): void {
+  ctx.save();
+  // Clip to this tile so the offset brick row cannot spill into the west neighbour.
+  ctx.beginPath();
+  ctx.rect(x, y, TILE, TILE);
+  ctx.clip();
   ctx.fillStyle = WALL_BASE;
   ctx.fillRect(x, y, TILE, TILE);
   const brickH = TILE / 2;
@@ -51,6 +56,7 @@ function drawWall(ctx: CanvasRenderingContext2D, x: number, y: number, hash: num
   ctx.fillRect(x, y, TILE, 2);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
   ctx.fillRect(x, y + TILE - 3, TILE, 3);
+  ctx.restore();
 }
 
 function drawRock(ctx: CanvasRenderingContext2D, x: number, y: number, hash: number): void {

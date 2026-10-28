@@ -3,16 +3,48 @@ import { PERKS, modsFor } from '../src/game/perks/perks';
 import { RunState } from '../src/game/systems/run';
 
 describe('run state', () => {
-  it('starts with three hearts and three equipped chickens', () => {
+  it('starts with three hearts and a single equipped chicken', () => {
     const run = new RunState(1);
     expect(run.health).toBe(3);
     expect(run.maxHealth).toBe(3);
-    expect(run.stack.slots.filter((slot) => slot !== null).length).toBe(3);
+    expect(run.owned).toEqual(['henny']);
+    expect(run.stack.slots.filter((slot) => slot !== null).length).toBe(1);
     expect(run.stack.slots[0]).toBe('henny');
+  });
+
+  it('lets a chicken fill as many slots as copies in the flock', () => {
+    const run = new RunState(1);
+    run.addChicken('henny');
+    run.addChicken('henny');
+    expect(run.copiesOwned('henny')).toBe(3);
+    run.setSlot(2, 'henny');
+    run.setSlot(3, 'henny');
+    expect(run.stack.slots.filter((slot) => slot === 'henny').length).toBe(3);
+  });
+
+  it('refuses to equip more copies than the flock owns', () => {
+    const run = new RunState(1);
+    run.setSlot(2, 'henny');
+    expect(run.copiesOwned('henny')).toBe(1);
+    expect(run.stack.slots[2]).toBeNull();
+    expect(run.stack.slots.filter((slot) => slot === 'henny').length).toBe(1);
+  });
+
+  it('places a new copy into the stack when there is room', () => {
+    const run = new RunState(1);
+    const slot = run.addChicken('henny');
+    expect(slot).toBe(1);
+    expect(run.stack.slots.filter((s) => s === 'henny').length).toBe(2);
   });
 
   it('swaps chickens between two ring slots', () => {
     const run = new RunState(1);
+    // Owned chickens are added to the flock first; auto-placement fills slots,
+    // so clear the stack and place each chicken explicitly.
+    run.addChicken('triple');
+    run.addChicken('frost');
+    run.setSlot(0, null);
+    run.setSlot(2, null);
     run.setSlot(0, 'henny');
     run.setSlot(1, 'triple');
     run.setSlot(3, 'frost');
