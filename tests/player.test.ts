@@ -7,7 +7,7 @@ function move(moveX: number, moveY: number): PlayerInput {
   return {
     moveX,
     moveY,
-    shoot: { up: false, right: false, down: false, left: false },
+    shoot: false,
     interact: false,
     interactPressed: false,
   };

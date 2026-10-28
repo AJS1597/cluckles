@@ -1,5 +1,4 @@
 import { Keys, type Engine, type KeyEvent } from 'excalibur';
-import type { Dir } from '../dir';
 import type { PlayerInput } from '../entities/player';
 
 export interface InputCallbacks {
@@ -12,8 +11,8 @@ export interface InputCallbacks {
 }
 
 /**
- * WASD moves, arrows shoot the chicken facing that way, Q/E rotate the stack. Overlay hotkeys are
- * handled on the keydown edge so a quick tap is never dropped.
+ * WASD moves, Space fires every equipped chicken, F interacts, Q/E rotate the stack. Overlay hotkeys
+ * are handled on the keydown edge so a quick tap is never dropped.
  */
 export class InputMap {
   private interactLatch = false;
@@ -30,14 +29,8 @@ export class InputMap {
     const moveX = (keyboard.isHeld(Keys.D) ? 1 : 0) - (keyboard.isHeld(Keys.A) ? 1 : 0);
     const moveY = (keyboard.isHeld(Keys.S) ? 1 : 0) - (keyboard.isHeld(Keys.W) ? 1 : 0);
 
-    const shoot: Record<Dir, boolean> = {
-      up: keyboard.isHeld(Keys.ArrowUp),
-      right: keyboard.isHeld(Keys.ArrowRight),
-      down: keyboard.isHeld(Keys.ArrowDown),
-      left: keyboard.isHeld(Keys.ArrowLeft),
-    };
-
-    const interact = keyboard.isHeld(Keys.Space) || keyboard.isHeld(Keys.Enter);
+    const shoot = keyboard.isHeld(Keys.Space);
+    const interact = keyboard.isHeld(Keys.F);
     const interactPressed = this.interactLatch;
     this.interactLatch = false;
 
@@ -61,8 +54,7 @@ export class InputMap {
       case Keys.M:
         this.callbacks.onToggleMap();
         break;
-      case Keys.Space:
-      case Keys.Enter:
+      case Keys.F:
         this.interactLatch = true;
         break;
       case Keys.F1:

@@ -208,7 +208,7 @@ export class Hud {
           <h2>Chicken Stack</h2>
           <button class="panel-close" data-close="1">close ✕</button>
         </header>
-        <p class="muted">Slots fire clockwise from up: ▲ up · ▶ right · ▼ down · ◀ left. Click a chicken then a slot to equip it, or click two slots to swap them.</p>
+        <p class="muted">Slots fire clockwise from up: ▲ up · ▶ right · ▼ down · ◀ left. Press SPACE to fire every equipped slot. Click a chicken then a slot to equip it, or click two slots to swap them.</p>
         <div class="ring-row">${ring}</div>
         <h3>Your flock</h3>
         <div class="inv-row">${inventory}</div>

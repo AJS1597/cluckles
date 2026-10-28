@@ -346,9 +346,10 @@ export class GameScene extends Scene {
   // ----------------------------------------------------------------- combat
 
   private tryShoot(input: ReturnType<InputMap['sample']>): void {
+    if (!input.shoot) return;
+
+    let fired = false;
     for (let slot = 0; slot < DIRS.length; slot++) {
-      const dir = DIRS[slot]!;
-      if (!input.shoot[dir]) continue;
       if ((this.player.slotCooldown[slot] ?? 0) > 0) continue;
 
       const id = this.run.stack.slots[slot];
@@ -357,15 +358,17 @@ export class GameScene extends Scene {
       if (!def) continue;
 
       const fire = resolveProjectile(def, this.run.mods);
-      const angle = dirAngle(dir);
+      const angle = dirAngle(DIRS[slot]!);
       const ox = this.player.x + Math.cos(angle) * (this.player.r + 8);
       const oy = this.player.y + Math.sin(angle) * (this.player.r + 8);
       this.projectiles.push(...spawnFromFire(fire, ox, oy, angle));
       this.player.slotCooldown[slot] = fire.cooldown;
       this.slotRecoil[slot] = 1;
-      this.sfx.shoot();
       this.particles.burst(ox, oy, fire.color, 3, 70);
+      fired = true;
     }
+
+    if (fired) this.sfx.shoot();
   }
 
   private updateEnemies(dt: number): void {
@@ -642,7 +645,7 @@ export class GameScene extends Scene {
       if (pedestal.kind === 'shop') {
         const price = pedestal.price ?? 0;
         prompt = this.run.feed >= price
-          ? `SPACE · buy ${pedestal.label ?? 'item'} (${price} feed)`
+          ? `F · buy ${pedestal.label ?? 'item'} (${price} feed)`
           : `${pedestal.label ?? 'item'} — need ${price} feed`;
         if (input.interactPressed && this.run.feed >= price) {
           if (this.run.spendFeed(price)) {
