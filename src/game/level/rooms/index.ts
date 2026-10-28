@@ -3,6 +3,16 @@ import { parseEgg, type EggRoom, type RoomRole } from '../roomFormat';
 import bossArena from './boss-arena.egg?raw';
 import bossPit from './boss-pit.egg?raw';
 import bossRing from './boss-ring.egg?raw';
+import bossRoosterYard from './boss-rooster-yard.egg?raw';
+import bossVultureRoost from './boss-vulture-roost.egg?raw';
+import bossCassowaryRun from './boss-cassowary-run.egg?raw';
+import bossWolfDen from './boss-wolf-den.egg?raw';
+import bossBearHollow from './boss-bear-hollow.egg?raw';
+import bossHawkSky from './boss-hawk-sky.egg?raw';
+import bossCrocLagoon from './boss-croc-lagoon.egg?raw';
+import bossLionPride from './boss-lion-pride.egg?raw';
+import bossSharkTrench from './boss-shark-trench.egg?raw';
+import bossTyrantMarsh from './boss-tyrant-marsh.egg?raw';
 import crossYard from './cross-yard.egg?raw';
 import fenceRun from './fence-run.egg?raw';
 import swampLagoon from './swamp-lagoon.egg?raw';
@@ -52,6 +62,16 @@ export const BUILTIN_EGG_SOURCES: readonly string[] = [
   bossYard,
   bossArena,
   bossRing,
+  bossRoosterYard,
+  bossVultureRoost,
+  bossCassowaryRun,
+  bossWolfDen,
+  bossBearHollow,
+  bossHawkSky,
+  bossCrocLagoon,
+  bossLionPride,
+  bossSharkTrench,
+  bossTyrantMarsh,
   crossYard,
   fenceRun,
   swampLagoon,

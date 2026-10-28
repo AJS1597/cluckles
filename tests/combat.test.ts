@@ -6,6 +6,7 @@ import {
   FLOOR_BOSS_IDS,
   bossMove,
   bossPattern,
+  bossSpecial,
   makeEnemy,
   updateEnemy,
 } from '../src/game/enemies/enemies';
@@ -36,6 +37,15 @@ describe('enemy balance', () => {
     for (const id of FLOOR_BOSS_IDS) {
       expect(['aimed', 'burst', 'spiral', 'ring-gap']).toContain(bossPattern(id));
     }
+  });
+
+  it('gives every floor boss a unique secondary attack', () => {
+    const valid = ['burst', 'ring', 'charge', 'summon', 'slam', 'strike', 'sweep', 'pounce', 'homing', 'roll'];
+    const kinds = FLOOR_BOSS_IDS.map((id) => bossSpecial(id).kind);
+    for (const kind of kinds) {
+      expect(valid).toContain(kind);
+    }
+    expect(new Set(kinds).size).toBe(FLOOR_BOSS_IDS.length);
   });
 });
 
@@ -161,5 +171,28 @@ describe('enemy ai', () => {
       expect(enemy.x).toBeLessThan(19 * 32);
       expect(enemy.y).toBeLessThan(11 * 32);
     }
+  });
+
+  it('bosses spring their secondary attack once its timer elapses', () => {
+    const boss = makeEnemy('wolf', 9, 5, 1, 1);
+    boss.specialTimer = 0;
+    const spawned: string[] = [];
+    const rng = mulberry32(5);
+    const ctx = () => ({
+      playerX: 400,
+      playerY: 300,
+      playerAlive: true,
+      room: room(),
+      rng,
+      spawnMinion: (type: string) => spawned.push(type),
+    });
+    let sawSpecial = false;
+    for (let i = 0; i < 150; i++) {
+      updateEnemy(boss, ctx(), 1 / 60);
+      if (boss.mode === 'special') sawSpecial = true;
+    }
+    expect(sawSpecial).toBe(true);
+    // Wolf's Pack Howl actually summons minions.
+    expect(spawned.length).toBeGreaterThan(0);
   });
 });

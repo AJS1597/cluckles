@@ -84,12 +84,27 @@ c f k s h              pedestals (chicken, feed, perk, shop, heart)
 ```
 
 Doors sit in the middle of a side and every room in a floor gets **1–4** of
-them, wired from the floor graph. **20 designed rooms** ship in the repo and are
+them, wired from the floor graph. **30 designed rooms** ship in the repo and are
 imported as real `.egg` text, so the editor and the game always agree.
 
 Floors are generated from that pool: a start room, combat rooms, a treasure
 room, a shop with **three** items you buy with feed, a boss room, and an exit
 room whose trapdoor is sealed until you beat the boss.
+
+### Boss arenas
+
+Each of the ten floor bosses fights in its **own large arena**, tagged with that
+boss in the `.egg` (`"tags": ["boss", "wolf"]`), so the layout always matches the
+fight — an open sky for the hawk, a water lagoon for the croc, corner dens for
+the wolf, and so on. The room picker (`pickBossTemplate`) matches the arena's
+tags against `bossForFloor(depth)`, falling back to a generic boss room for
+custom pools.
+
+Every boss also has a **telegraphed secondary attack** unique to it, alongside
+its normal volley and movement style: a spreading egg fan, a bone ring, a
+triple-kick charge, a minion howl, a ground slam, a lightning barrage, a tail
+sweep, a pounce, a homing blood volley, or a spinning death roll. See
+`bossSpecial()` in `src/game/enemies/enemies.ts`.
 
 ## Room editor (subpage)
 

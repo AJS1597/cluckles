@@ -67,6 +67,13 @@ export const ENEMY = {
   entryInertTime: 1.0,
 } as const;
 
+export const BOSS = {
+  /** Global multiplier on every boss secondary-attack cooldown. */
+  specialCooldownMul: 1,
+  /** Brief recovery after a special before the boss moves/attacks again. */
+  specialRecovery: 0.35,
+} as const;
+
 export const COMBAT = {
   hitstop: 0.05,
   feedPerEnemy: 2,

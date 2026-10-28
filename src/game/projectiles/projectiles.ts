@@ -131,6 +131,7 @@ export function spawnEnemyShot(
   damage: number,
   radius: number,
   color: string,
+  homing = 0,
 ): Projectile {
   const p = base('enemy', x, y);
   p.vx = vx;
@@ -139,6 +140,7 @@ export function spawnEnemyShot(
   p.r = radius;
   p.color = color;
   p.life = 4;
+  p.homing = homing;
   p.angle = Math.atan2(vy, vx);
   return p;
 }

@@ -28,6 +28,20 @@ describe('floor bosses', () => {
     expect(new Set(ids).size).toBe(10);
   });
 
+  it('drops each floor boss into its own tagged arena', () => {
+    for (let depth = 1; depth <= 10; depth++) {
+      const dungeon = generateDungeon({
+        seed: 11,
+        depth,
+        pool: loadBuiltinRooms(),
+        ownedChickens: [],
+        ownedPerks: [],
+      });
+      const bossNode = dungeon.nodes.get(dungeon.bossKey)!;
+      expect(bossNode.room.tags ?? []).toContain(bossForFloor(depth));
+    }
+  });
+
   it('places the floor boss in the boss room', () => {
     const dungeon = generateDungeon({
       seed: 3,
