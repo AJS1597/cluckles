@@ -59,6 +59,12 @@ export const ENEMY = {
   shootRange: 300,
   hurtTime: 0.12,
   deathTime: 0.35,
+  /**
+   * Enemies stand still for this long after a room loads, so the player has a
+   * moment to read the room before anything rushes or shoots at them. The
+   * player gets the same window of entry invulnerability.
+   */
+  entryInertTime: 1.0,
 } as const;
 
 export const COMBAT = {
