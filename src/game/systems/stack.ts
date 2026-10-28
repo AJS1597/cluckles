@@ -25,7 +25,7 @@ export function dirForSlot(index: number): Dir {
   return DIRS[index] ?? 'up';
 }
 
-/** The chicken that answers an arrow key, or null when that direction is empty. */
+/** The chicken assigned to a direction, or null when that slot is empty. */
 export function chickenAt(stack: StackState, dir: Dir): string | null {
   return stack.slots[slotIndexForDir(dir)] ?? null;
 }

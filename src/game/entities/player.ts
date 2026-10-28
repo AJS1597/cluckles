@@ -1,5 +1,4 @@
 import { PLAYER, TILE } from '../config';
-import type { Dir } from '../dir';
 import { isWaterAt, type EggRoom } from '../level/roomFormat';
 import { moveAabb } from '../physics/tilemove';
 import { moveTowards } from '../util/math';
@@ -8,7 +7,8 @@ export interface PlayerInput {
   /** -1..1 per axis; diagonals are normalised by the caller. */
   moveX: number;
   moveY: number;
-  shoot: Record<Dir, boolean>;
+  /** True while the fire key is held; every equipped slot fires its own cooldown. */
+  shoot: boolean;
   interact: boolean;
   interactPressed: boolean;
 }

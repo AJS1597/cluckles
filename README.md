@@ -13,7 +13,8 @@ The agent did not do anything too complex, most of it was able to be explained a
 
 A top-down roguelike shooter where your weapon is a stack of chickens. Each
 chicken sits in one of four ring slots (`up → right → down → left`, clockwise),
-and the arrow key matching that slot fires it. Empty slot, no shot.
+and pressing Space fires every equipped chicken in its slot's direction. Empty
+slots do not fire.
 
 Built on the same dev stack as `NatTuck/drunk-panda`: **Excalibur.js 0.32**,
 TypeScript, Vite and pnpm. Client only, no backend.
@@ -47,11 +48,11 @@ browser, or share the file. It is git-ignored, so rebuild it after changes.
 | Action | Keys |
 | --- | --- |
 | Move | `W` `A` `S` `D` |
-| Shoot the chicken facing that way | `↑` `↓` `←` `→` |
+| Fire every equipped chicken | `Space` |
 | Rotate chicken stack clockwise / anticlockwise | `E` / `Q` |
 | Chicken stack GUI | `Tab` |
 | Perks GUI | `P` |
-| Interact / buy | `Space` |
+| Interact / buy | `F` |
 | New run | `R` |
 | Debug overlay | `F1` |
 

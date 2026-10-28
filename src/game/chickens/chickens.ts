@@ -3,7 +3,7 @@ import type { ChickenDef } from './types';
 
 /**
  * The chicken roster. Every chicken is a weapon: assign one to a ring slot and
- * the matching arrow key fires it in that slot's direction.
+ * pressing Space fires it in that slot's direction.
  */
 export const CHICKENS: readonly ChickenDef[] = [
   {

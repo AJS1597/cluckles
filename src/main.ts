@@ -17,15 +17,7 @@ const game = new Engine({
 game.addScene('game', new GameScene());
 
 // Keep the page from scrolling or the browser from hijacking the controls.
-const prevent = new Set([
-  'Space',
-  'ArrowUp',
-  'ArrowDown',
-  'ArrowLeft',
-  'ArrowRight',
-  'Tab',
-  'F1',
-]);
+const prevent = new Set(['Space', 'Tab', 'F1']);
 window.addEventListener(
   'keydown',
   (event) => {
