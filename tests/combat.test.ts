@@ -126,6 +126,28 @@ describe('enemy ai', () => {
     expect(shots).toBeGreaterThan(0);
   });
 
+  it('holds enemy AI still during the room-entry grace window', () => {
+    const enemy = makeEnemy('crow', 3, 5, 1, 1);
+    enemy.inertTime = 1.0;
+    const target = { x: 500, y: 200 };
+    const start = { x: enemy.x, y: enemy.y };
+    const rng = mulberry32(2);
+    const ctx = () => ({
+      playerX: target.x,
+      playerY: target.y,
+      playerAlive: true,
+      room: room(),
+      rng,
+    });
+    // Frozen through the grace window...
+    for (let i = 0; i < 59; i++) updateEnemy(enemy, ctx(), 1 / 60);
+    expect(enemy.x).toBeCloseTo(start.x);
+    expect(enemy.y).toBeCloseTo(start.y);
+    // ...then moving once it expires.
+    for (let i = 0; i < 60; i++) updateEnemy(enemy, ctx(), 1 / 60);
+    expect(Math.hypot(enemy.x - start.x, enemy.y - start.y)).toBeGreaterThan(0);
+  });
+
   it('never pushes an enemy out of the room', () => {
     const arena = room();
     const rng = mulberry32(9);

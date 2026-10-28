@@ -627,6 +627,27 @@ export function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number)
 
   drawEnemyBody(ctx, e, time);
 
+  // Frozen on room entry: a cold shimmer so the grace reads as intentional.
+  if (e.inertTime > 0 && !e.dead) {
+    const pulse = 0.5 + Math.sin(time * 8) * 0.5;
+    ctx.save();
+    ctx.globalAlpha = 0.32;
+    ctx.fillStyle = '#bfe9ff';
+    ctx.beginPath();
+    ctx.arc(0, 0, e.r * 1.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.35 + pulse * 0.35;
+    ctx.strokeStyle = '#dff4ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.r + 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   if (e.hp < e.maxHp && !e.dead) {
     const w = e.r * 2;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';

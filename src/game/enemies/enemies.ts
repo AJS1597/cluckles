@@ -287,6 +287,11 @@ export interface Enemy {
   timer: number;
   mode: EnemyMode;
   hurtTime: number;
+  /**
+   * Grace timer set when a room is entered. While it is positive the enemy
+   * holds still and does not attack, so the player can react on entry.
+   */
+  inertTime: number;
   hitFlash: number;
   dead: boolean;
   removed: boolean;
@@ -343,6 +348,7 @@ export function makeEnemy(
     timer: 0,
     mode: 'move',
     hurtTime: 0,
+    inertTime: 0,
     hitFlash: 0,
     dead: false,
     removed: false,
@@ -396,6 +402,7 @@ export function updateEnemy(e: Enemy, ctx: EnemyContext, dt: number): EnemyShotE
   }
 
   e.hurtTime = Math.max(0, e.hurtTime - dt);
+  e.inertTime = Math.max(0, e.inertTime - dt);
   if (e.slowTime > 0) {
     e.slowTime -= dt;
     if (e.slowTime <= 0) e.slowFactor = 1;
@@ -409,7 +416,9 @@ export function updateEnemy(e: Enemy, ctx: EnemyContext, dt: number): EnemyShotE
   let vx = e.knockX;
   let vy = e.knockY;
 
-  if (e.hurtTime <= 0) {
+  // Frozen on room entry, and briefly stunned by hits. In both cases the enemy
+  // skips its AI but knockback, poison, death and contact damage still apply.
+  if (e.hurtTime <= 0 && e.inertTime <= 0) {
     const motion = behaviorMotion(e, ctx, speed, dt, shots);
     vx += motion.x;
     vy += motion.y;

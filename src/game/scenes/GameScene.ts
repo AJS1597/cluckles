@@ -235,7 +235,9 @@ export class GameScene extends Scene {
     this.player.y = (tile.y + 0.5) * TILE;
     this.player.vx = 0;
     this.player.vy = 0;
-    this.player.invuln = first ? 1.0 : 0.7;
+    // Match the enemies' entry grace window, so the player is safe for exactly
+    // as long as the room is inert.
+    this.player.invuln = ENEMY.entryInertTime;
     this.player.slotCooldown = [0, 0, 0, 0];
 
     this.projectiles = [];
@@ -270,6 +272,8 @@ export class GameScene extends Scene {
       const spawns = ensureSpawns(node, this.run.depth, this.rng);
       for (const spawn of spawns) {
         const enemy = makeEnemy(spawn.type, spawn.x, spawn.y, this.run.depth, this.enemyIdCounter++);
+        // Freeze the AI while the room "loads" so the player can react.
+        enemy.inertTime = ENEMY.entryInertTime;
         this.enemies.push(enemy);
       }
     }
