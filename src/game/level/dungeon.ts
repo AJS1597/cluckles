@@ -35,6 +35,13 @@ export interface ShopEntry {
   sold: boolean;
 }
 
+/** Persisted state for one room spawn, aligned with `DungeonNode.spawns`. */
+export interface SavedEnemyState {
+  /** Current HP; -1 means the enemy has not spawned yet. */
+  hp: number;
+  dead: boolean;
+}
+
 export interface DungeonNode {
   key: string;
   col: number;
@@ -47,6 +54,8 @@ export interface DungeonNode {
   visited: boolean;
   /** Spawned on first entry, then remembered. */
   spawns: EnemySpec[] | null;
+  /** Per-spawn HP/dead state, remembered across room transitions. */
+  enemyStates: SavedEnemyState[] | null;
   /** Pedestals authored in the template, resolved on entry. */
   authored: PedestalSpec[];
   reward: RewardPlan | null;
@@ -355,6 +364,7 @@ export function generateDungeon(options: GenerateOptions): Dungeon {
       cleared: false,
       visited: false,
       spawns: null,
+      enemyStates: null,
       authored: roomPedestals(room),
       reward: null,
       rewardPending: false,
@@ -405,9 +415,42 @@ export function neighborKey(node: DungeonNode, side: DoorSide): string {
 
 /** Spawns are rolled the first time a room is entered and then remembered. */
 export function ensureSpawns(node: DungeonNode, depth: number, rng: Rng): EnemySpec[] {
-  if (node.spawns) {
-    return node.spawns;
+  if (!node.spawns) {
+    node.spawns = generateSpawns(node, depth, rng);
   }
-  node.spawns = generateSpawns(node, depth, rng);
+  node.enemyStates ??= node.spawns.map(() => ({ hp: -1, dead: false }));
   return node.spawns;
+}
+
+/** Persist the current HP of a spawn; zero or less marks it dead for good. */
+export function recordSpawnHealth(node: DungeonNode, index: number, hp: number): void {
+  const state = node.enemyStates?.[index];
+  if (!state) return;
+  if (hp <= 0) {
+    state.hp = 0;
+    state.dead = true;
+    return;
+  }
+  state.hp = hp;
+  state.dead = false;
+}
+
+export interface LivingSpawn {
+  /** Original index in `node.spawns`; used to match saved state. */
+  index: number;
+  spec: EnemySpec;
+  /** -1 means full health because the spawn has not happened yet. */
+  hp: number;
+}
+
+/** Spawns that should still appear when the room is entered. */
+export function livingSpawns(node: DungeonNode): LivingSpawn[] {
+  if (!node.spawns || !node.enemyStates) return [];
+  const living: LivingSpawn[] = [];
+  node.spawns.forEach((spec, index) => {
+    const state = node.enemyStates![index];
+    if (!state || state.dead) return;
+    living.push({ index, spec, hp: state.hp });
+  });
+  return living;
 }
